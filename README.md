@@ -1,2 +1,2 @@
-# danielshamburger.com
-Repo for my personal website
+# danielshamburger[dot]com
+Repo for my personal website.
