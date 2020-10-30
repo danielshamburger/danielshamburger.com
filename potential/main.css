@@ -1,0 +1,147 @@
+@import url('https://rsms.me/inter/inter-ui.css');
+
+*::-moz-selection { 
+	background: #ffff0c;
+}
+
+*::selection { 
+	background: #ffff0c; 
+}
+
+.black *::-moz-selection {
+	background: #fff;
+	color: #ffff0c;
+}
+
+.black *::selection {
+	background: #fff;
+	color: #ffff0c;
+}
+
+body {
+	font-family: 'Inter UI', sans-serif;
+	background: #000;
+}
+
+h1 {
+	font-size: 80px;
+    font-weight: 700;
+    letter-spacing: -0.05em;
+    line-height: 1.1;
+}
+
+h2 {
+	font-size: 45px;
+	font-weight: 600;
+}
+
+.viewport {
+	width: 100%;
+	max-width: 1600px;
+	margin: 0 auto;
+	background-color: #fff;
+	transition: .8s ease background;
+	color: #000;
+
+	background-image: url('images/daniel.jpg');
+	background-repeat: no-repeat;
+	background-size: 600px;
+	background-position: 90% bottom;
+}
+
+.hero p {
+	margin: 20px 0;
+}
+
+.hero h1 {
+	background: #ffff0c;
+	display: inline-block;
+}
+
+.viewport.black {
+	background-color: #000;
+	color: #fff;
+}
+
+.wrapper {
+	width: 90%;
+	max-width: 1400px;
+	margin: 0 auto;
+}
+
+section {
+	height: 100vh;
+	display: flex;
+	align-items: center;
+}
+
+a {
+	text-decoration: none;
+	color: #000;
+	position: relative;
+	display: inline-block;
+	z-index: 1;
+	transition: .15s ease color;
+}
+
+a:before {
+	content: '';
+	position: absolute;
+	background: #000;
+	display: block;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 2px;
+	z-index: -1;
+	transition: .2s ease height;
+}
+
+a:hover {
+	color: #fff;
+}
+
+a:hover:before {
+	height: 100%;
+}
+
+.black .hero {
+	background-image: none;
+}
+
+.halves {
+	display: flex;
+}
+
+.halves .half {
+	flex: 1;
+}
+
+.halves .half:first-child {
+	padding-right: 100px;
+}
+
+h3 {
+	font-size: 40px;
+}
+
+#about h1 {
+	margin-bottom: 100px;
+}
+
+#about h2 {
+	margin-bottom: 30px;
+}
+
+#about p {
+	line-height: 1.8;
+	margin-bottom: 20px;
+}
+
+#about ul {
+	list-style: disc;
+}
+
+#about ul li {
+	margin-bottom: 10px;
+}
