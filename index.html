@@ -4,7 +4,6 @@
 	<meta charset="utf-8" />
 	<title>👋 Hi, I'm Daniel.</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<!-- <link href="https://fonts.googleapis.com/css?family=Inter:400,700" rel="stylesheet"> -->
 	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-22563082-1"></script>
 	<style>
 		html, body {
@@ -14,7 +13,6 @@
 			margin: 0;
 		}
 		body {
-			/*font-family: 'Inter';*/
 			font-family: 'Arial', sans-serif;
 			/*display: flex;
 			flex-direction: column;
@@ -32,6 +30,12 @@
 			height: 120px;
 			padding: 4px;
 		}
+		header p {
+			margin: 10px 0 0 10px;
+		}
+		header h1 {
+			margin: 0 0 0 0;
+		}
 		#openExplanation {
 			font-size: 32px;
 			background: transparent;
@@ -47,7 +51,7 @@
 			height: calc( 100vh - 250px );
 			display: flex;
 			flex-direction: column;
-			padding: 4px;
+			padding: 5px;
 			justify-content: center;
 			align-items: center;
 		}
@@ -88,7 +92,8 @@
 			font-size: 13px;
 			background: transparent;
 			text-decoration: none;
-			padding: 5px;
+			padding: 2px 5px;
+			display: inline-block;
 		}
 		h2 {
 			font-weight: normal;
@@ -98,7 +103,10 @@
 </head>
 <body>
 	<header>
-		<h1>Daniel<br /> Shamburger</h1>
+		<div>
+			<p>Hi, my name is</p>
+			<h1>Daniel Shamburger</h1>
+		</div>
 		<button id="openExplanation">?</button>
 	</header>
 	<main>
