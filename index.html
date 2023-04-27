@@ -4,7 +4,6 @@
 	<meta charset="utf-8" />
 	<title>👋 Hi, I'm Daniel.</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<!-- <link href="https://fonts.googleapis.com/css?family=Inter:400,700" rel="stylesheet"> -->
 	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-22563082-1"></script>
 	<style>
 		html, body {
@@ -14,7 +13,6 @@
 			margin: 0;
 		}
 		body {
-			/*font-family: 'Inter';*/
 			font-family: 'Arial', sans-serif;
 			/*display: flex;
 			flex-direction: column;
@@ -32,6 +30,12 @@
 			height: 120px;
 			padding: 2px;
 		}
+		header p {
+			margin: 10px 0 0 10px;
+		}
+		header h1 {
+			margin: 0 0 0 0;
+		}
 		#openExplanation {
 			font-size: 32px;
 			background: transparent;
@@ -47,7 +51,7 @@
 			height: calc( 100vh - 250px );
 			display: flex;
 			flex-direction: column;
-			padding: 2px;
+			padding: 5px;
 			justify-content: center;
 			align-items: center;
 		}
@@ -87,8 +91,9 @@
 			color: #666;
 			font-size: 13px;
 			background: transparent;
-			text-decoration: underline;
-			padding: 5px;
+			text-decoration: none;
+			padding: 2px 5px;
+			display: inline-block;
 		}
 		h2 {
 			font-weight: normal;
@@ -98,15 +103,18 @@
 </head>
 <body>
 	<header>
-		<h1>Daniel Shamburger</h1>
+		<div>
+			<p>Hi, my name is</p>
+			<h1>Daniel Shamburger</h1>
+		</div>
 		<button id="openExplanation">?</button>
 	</header>
 	<main>
 		<section>
 			<h2>👋 Welcome to my web page</h2>
-			<p><strong>Work related?</strong> Find me on <a class="button" target="_blank" href="https://www.linkedin.com/in/danielshamburger/">LinkedIn 👉</a></p>
-			<p><strong>Personal?</strong> Try <a class="button" href="https://www.instagram.com/danielshamburger/" target="_blank">Instagram 👉</a> or <a class="button" target="_blank" href="https://www.strava.com/athletes/2136969">Strava 👉</a></p>
-			<p><strong>Tossup?</strong> Good old email <span class="button">hello@[thisdomain] ✉️</span></a></p>
+			<p><strong>Professional:</strong> Find me on <a class="button" href="https://www.linkedin.com/in/danielshamburger/">LinkedIn 🧑‍💼</a> or <a class="button" href="https://github.com/danielshamburger/">GitHub 👨‍💻</a></p>
+			<p><strong>Personal:</strong> Try <a class="button" href="https://www.instagram.com/danielshamburger/">Instagram 📸</a> or <a class="button" href="https://www.strava.com/athletes/2136969">Strava 🚴🏻‍♂️</a></p>
+			<p><strong>Good old email:</strong>&nbsp;<span class="button">hello@[thisdomain] ✉️</span></a></p>
 		</section>
 	</main>
 	<div id="explanation">
