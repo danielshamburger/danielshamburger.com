@@ -19,16 +19,11 @@
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@600..800&display=swap">
 	<style>
-		/* Typed so they can be animated: the page color and the scroll percentage */
+		/* Typed so the page color can be animated */
 		@property --bg {
 			syntax: "<color>";
 			inherits: true;
 			initial-value: #81c08b;
-		}
-		@property --percent {
-			syntax: "<integer>";
-			inherits: true;
-			initial-value: 0;
 		}
 		:root {
 			--ink: #2a2a2a;
@@ -42,8 +37,8 @@
 		@media (prefers-reduced-motion: no-preference) {
 			html { scroll-behavior: smooth; }
 		}
-		/* The browser drives color and percentage straight from the scroll position. Its stops are evenly spaced, so the
-		   script takes over (.scripted-scroll) in browsers without scroll timelines or when content stretches a section */
+		/* The browser drives the color straight from the scroll position. Its stops are evenly spaced, so the script
+		   takes over (.scripted-scroll) in browsers without scroll timelines or when content stretches a section */
 		@supports (animation-timeline: scroll()) {
 			:root:not(.scripted-scroll) {
 				animation: page-scroll linear both;
@@ -52,10 +47,10 @@
 		}
 		/* One stop per section; the first color is also the favicon fill */
 		@keyframes page-scroll {
-			0% { --bg: #81c08b; --percent: 0; }
+			0% { --bg: #81c08b; }
 			33.333% { --bg: #f0c3d8; }
 			66.667% { --bg: #89bee3; }
-			100% { --bg: #ecdf8a; --percent: 100; }
+			100% { --bg: #ecdf8a; }
 		}
 		* {
 			box-sizing: border-box;
@@ -213,19 +208,23 @@
 			background: var(--bg);
 		}
 		.progress {
+			position: relative;
 			display: grid;
 			place-items: center;
-			background: linear-gradient(to right, var(--ink) calc(var(--percent) * 1%), transparent 0);
 			font-size: 0.9rem;
 			font-weight: 700;
-			transition: color 0.3s;
 		}
-		.progress::before {
-			counter-reset: percent var(--percent);
-			content: counter(percent) "%";
-		}
-		.progress.filled {
+		/* The fill, carrying an inverted copy of the label cropped to its width, so the text color splits exactly at
+		   the fill's edge */
+		.progress::after {
+			content: attr(data-label);
+			position: absolute;
+			inset: 0;
+			display: grid;
+			place-items: center;
+			background: var(--ink);
 			color: var(--bg);
+			clip-path: inset(0 calc(100% - var(--fill, 0%)) 0 0);
 		}
 		.dots {
 			--bleed: 24px;
@@ -320,7 +319,7 @@
 		</section>
 	</main>
 	<aside>
-		<div class="progress mono" aria-hidden="true"></div>
+		<div class="progress mono" aria-hidden="true" data-label="0%">0%</div>
 		<div class="dots" aria-hidden="true"><canvas></canvas></div>
 		<button class="next" type="button" aria-label="Next section">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="miter">
@@ -338,8 +337,8 @@
 		wireDots(dotGrid(dotArea));
 		copyButton();
 
-		// Color and percentage come from CSS scroll-driven animations; this handles the thresholds
-		// (arrow flip, progress label color) and drives color and percentage itself where CSS can't
+		// The color comes from a CSS scroll-driven animation (this drives it where CSS can't); this also sets the
+		// percentage, which Safari won't animate as a whole number, and flips the arrow at the end
 		function scrollEffects() {
 			const root = document.documentElement;
 			const sections = [...document.querySelectorAll('section')];
@@ -347,7 +346,7 @@
 			const supported = CSS.supports('animation-timeline: scroll()');
 			// Same stops as @keyframes page-scroll
 			const colors = [[129, 192, 139], [240, 195, 216], [137, 190, 227], [236, 223, 138]];
-			let starts, maxScroll, scripted, filled, atEnd;
+			let starts, maxScroll, scripted, percent, atEnd;
 
 			// Measured on resize only, so scrolling never forces a layout
 			function measure() {
@@ -357,30 +356,27 @@
 				const height = sections[0].offsetHeight;
 				scripted = !supported || sections.some(section => Math.abs(section.offsetHeight - height) > 1);
 				root.classList.toggle('scripted-scroll', scripted);
-				if (!scripted) {
-					root.style.removeProperty('--bg');
-					root.style.removeProperty('--percent');
-				}
+				if (!scripted) root.style.removeProperty('--bg');
 				update();
 			}
 
 			function update() {
 				// Clamped because macOS overscroll reports positions past either end
 				const scroll = clamp(scrollY, 0, maxScroll);
-				const percent = Math.round(scroll / maxScroll * 100);
-
 				if (scripted) {
 					// Blend between the colors of the sections on either side of the scroll position
 					const i = clamp(starts.findLastIndex(start => start <= scroll), 0, colors.length - 2);
 					const t = Math.min((scroll - starts[i]) / (starts[i + 1] - starts[i]), 1);
 					const rgb = colors[i].map((c, n) => Math.round(c + (colors[i + 1][n] - c) * t));
 					root.style.setProperty('--bg', `rgb(${rgb})`);
-					root.style.setProperty('--percent', percent);
 				}
 
-				if (percent >= 50 !== filled) {
-					filled = percent >= 50;
-					progress.classList.toggle('filled', filled);
+				// Only touches the page when the rounded number changes
+				const nextPercent = Math.round(scroll / maxScroll * 100);
+				if (nextPercent !== percent) {
+					percent = nextPercent;
+					progress.textContent = progress.dataset.label = percent + '%';
+					progress.style.setProperty('--fill', percent + '%');
 				}
 
 				// Flips once the last section is more than halfway in
