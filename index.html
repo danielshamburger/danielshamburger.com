@@ -139,19 +139,22 @@
 		.links li + li {
 			border-top: var(--line);
 		}
-		.links span {
+		.external {
 			position: relative;
 			display: inline-block;
 			/* Cap height, so the arrow stands as tall as the capitals */
 			width: 0.72em;
 			margin-left: 0.25em;
 		}
-		.links span svg {
+		.external svg {
 			display: block;
+			width: 100%;
+			height: auto;
+			aspect-ratio: 1;
 			overflow: visible;
 		}
 		/* Matches the text underline, which can't reach an SVG */
-		.links span::after {
+		.external::after {
 			content: "";
 			position: absolute;
 			inset-inline: 0;
@@ -167,7 +170,7 @@
 			text-decoration: underline 0.08em;
 			text-underline-offset: 0.12em;
 		}
-		.links a:is(:hover, :focus-visible) span::after {
+		.links a:is(:hover, :focus-visible) .external::after {
 			visibility: visible;
 		}
 
@@ -194,7 +197,6 @@
 			border: 0;
 			border-left: 3px solid var(--bg);
 			background: none;
-			color: inherit;
 			letter-spacing: 0.15em;
 			cursor: pointer;
 		}
@@ -259,7 +261,6 @@
 			rotate: 180deg;
 		}
 
-
 		@media (prefers-reduced-motion: reduce) {
 			.next svg {
 				transition: none;
@@ -291,6 +292,10 @@
 	</style>
 </head>
 <body>
+	<!-- Shared icons; `hidden` doesn't apply to SVG elements, so it's hidden with display: none -->
+	<svg style="display: none">
+		<symbol id="external" viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></symbol>
+	</svg>
 	<main>
 		<section class="intro">
 			<header class="mono">hello, my name is</header>
@@ -301,9 +306,9 @@
 		</section>
 		<section class="links">
 			<ul role="list">
-				<li><a href="https://www.linkedin.com/in/danielshamburger/" data-picture="linkedin">LinkedIn<span aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></svg></span></a></li>
-				<li><a href="https://github.com/danielshamburger/" data-picture="github">GitHub<span aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></svg></span></a></li>
-				<li><a href="https://www.strava.com/athletes/2136969" data-picture="strava">Strava<span aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></svg></span></a></li>
+				<li><a href="https://www.linkedin.com/in/danielshamburger/" data-picture="linkedin">LinkedIn<span class="external" aria-hidden="true"><svg><use href="#external"/></svg></span></a></li>
+				<li><a href="https://github.com/danielshamburger/" data-picture="github">GitHub<span class="external" aria-hidden="true"><svg><use href="#external"/></svg></span></a></li>
+				<li><a href="https://www.strava.com/athletes/2136969" data-picture="strava">Strava<span class="external" aria-hidden="true"><svg><use href="#external"/></svg></span></a></li>
 			</ul>
 		</section>
 		<section class="contact">
@@ -325,10 +330,12 @@
 	</aside>
 
 	<script type="module">
+		const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 		const arrow = document.querySelector('.next');
+		const dotArea = document.querySelector('.dots');
 
 		scrollEffects();
-		dotGrid();
+		wireDots(dotGrid(dotArea));
 		copyButton();
 
 		// Color and percentage come from CSS scroll-driven animations; this handles the thresholds
@@ -359,12 +366,12 @@
 
 			function update() {
 				// Clamped because macOS overscroll reports positions past either end
-				const scroll = Math.min(Math.max(scrollY, 0), maxScroll);
+				const scroll = clamp(scrollY, 0, maxScroll);
 				const percent = Math.round(scroll / maxScroll * 100);
 
 				if (scripted) {
 					// Blend between the colors of the sections on either side of the scroll position
-					const i = Math.min(Math.max(starts.findLastIndex(start => start <= scroll), 0), colors.length - 2);
+					const i = clamp(starts.findLastIndex(start => start <= scroll), 0, colors.length - 2);
 					const t = Math.min((scroll - starts[i]) / (starts[i + 1] - starts[i]), 1);
 					const rgb = colors[i].map((c, n) => Math.round(c + (colors[i + 1][n] - c) * t));
 					root.style.setProperty('--bg', `rgb(${rgb})`);
@@ -395,13 +402,43 @@
 			measure();
 		}
 
-		// Dots push away from a field (the pointer, the hovered arrow or the load-time hint) and grow as it gets close;
-		// clicks send out a shockwave
-		function dotGrid() {
+		// What makes the dot grid react: the pointer over it, the arrow, the name and links, and a sweep after load
+		function wireDots(grid) {
+			const ARROW_REACH = 170, SWEEP_DELAY = 1000;
+
+			dotArea.addEventListener('pointermove', e => grid.attract(e.clientX, e.clientY, { cursor: true }));
+			dotArea.addEventListener('pointerleave', grid.release);
+			dotArea.addEventListener('pointerdown', e => grid.burst(e.clientX, e.clientY));
+
+			// Hovering the arrow pushes dots away from its edge nearest the grid
+			arrow.addEventListener('pointerenter', () => {
+				const area = dotArea.getBoundingClientRect(), icon = arrow.querySelector('svg').getBoundingClientRect();
+				const x = clamp(area.left + area.width / 2, icon.left, icon.right);
+				const y = clamp(area.top + area.height / 2, icon.top, icon.bottom);
+				grid.attract(x, y, { reach: ARROW_REACH });
+			});
+			arrow.addEventListener('pointerleave', grid.release);
+
+			// The name and each link draw their picture while hovered or focused
+			for (const element of document.querySelectorAll('[data-picture]')) {
+				const show = () => grid.show(element.dataset.picture);
+				const hide = () => grid.show(null);
+				element.addEventListener('pointerenter', show);
+				element.addEventListener('focus', show);
+				element.addEventListener('pointerleave', hide);
+				element.addEventListener('blur', hide);
+			}
+
+			if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setTimeout(grid.sweep, SWEEP_DELAY);
+		}
+
+		// A canvas of dots that push away from a point and grow as it gets close, ring out from clicks, and draw small
+		// pictures. It knows nothing about the rest of the page: it returns its controls, and wireDots decides what drives them.
+		function dotGrid(area) {
 			const SPACING = 14, MARGIN = 12, RADIUS = 1.5, REACH = 100, PUSH = 18, GROW = 1.4, EASE = 0.2;
 			const BURST_DURATION = 600, BURST_REACH = 320, BURST_WIDTH = 30, BURST_PUSH = 18, BURST_GROW = 1.5;
-			const HINT_DELAY = 1000, HINT_DURATION = 1200, HINT_STRENGTH = 0.7, HINT_FROM = 0.15, HINT_TO = 0.85;
-			const ARROW_REACH = 170, PICTURE_GROW = 1.3, PICTURE_DIM = 0.6;
+			const SWEEP_DURATION = 1200, SWEEP_STRENGTH = 0.7, SWEEP_FROM = 0.15, SWEEP_TO = 0.85;
+			const PICTURE_GROW = 1.3, PICTURE_DIM = 0.6;
 			// One character per dot; at most 11 wide so they fit the narrowest sidebar
 			const PICTURES = {
 				hello: [
@@ -447,15 +484,24 @@
 				],
 			};
 
-			const area = document.querySelector('.dots');
 			const canvas = area.querySelector('canvas');
 			const ctx = canvas.getContext('2d');
 			const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink');
 			const bleed = Number.parseFloat(getComputedStyle(area).getPropertyValue('--bleed'));
 
-			let width, height, cols, rows, dots = [], outside;
-			let field = { x: 0, y: 0, reach: REACH, cursor: false };
-			let strength = 0, target = 0, bursts = [], hint = null, frame = null, picture = null, dim = 0;
+			// Geometry is rebuilt on resize and never modified; state changes only through the controls and step()
+			let geometry;
+			const state = {
+				field: { x: 0, y: 0, reach: REACH, cursor: false }, // the point the dots push away from
+				strength: 0, // how hard the field pushes right now, easing toward target
+				target: 0,
+				bursts: [], // click shockwaves still expanding
+				sweep: null, // the load-time sweep while it runs
+				picture: null, // name of the picture to draw
+				dim: 0, // how far the dots outside the picture have shrunk
+				lit: [], // per dot, how far it has grown into the picture
+			};
+			let frame = null;
 
 			// Moves a value a step toward its goal, snapping once it's close enough to stop animating
 			const ease = (value, goal) => {
@@ -463,64 +509,75 @@
 				return Math.abs(goal - next) < 0.001 ? goal : next;
 			};
 
-			function layout() {
-				({ width, height } = area.getBoundingClientRect());
-				canvas.width = (width + 2 * bleed) * devicePixelRatio;
-				canvas.height = (height + 2 * bleed) * devicePixelRatio;
-				// Draw in the area's coordinates; the bleed sits at negative/overflow positions
-				ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, bleed * devicePixelRatio, bleed * devicePixelRatio);
-
+			// Where the dots sit for a given size
+			function layout(width, height) {
 				// Same margin on every side; spacing stretches a fraction of a pixel per axis to fit exactly
 				const axis = size => {
 					const n = Math.max(1, Math.round((size - 2 * MARGIN) / SPACING));
 					return Array.from({ length: n + 1 }, (_, i) => MARGIN + i * (size - 2 * MARGIN) / n);
 				};
 				const xs = axis(width), ys = axis(height);
-				cols = xs.length;
-				rows = ys.length;
-				dots = ys.flatMap((y, row) => xs.map((x, col) => ({ x, y, col, row, lit: 0 })));
 
 				// The bleed ring around the area, where shapes are drawn in ink instead of cut out
-				outside = new Path2D();
+				const outside = new Path2D();
 				outside.rect(-bleed, -bleed, width + 2 * bleed, height + 2 * bleed);
 				outside.rect(0, 0, width, height);
 
+				const dots = ys.flatMap((y, row) => xs.map((x, col) => ({ x, y, col, row })));
+				return { width, height, cols: xs.length, rows: ys.length, dots, outside };
+			}
+
+			function resize() {
+				const { width, height } = area.getBoundingClientRect();
+				canvas.width = (width + 2 * bleed) * devicePixelRatio;
+				canvas.height = (height + 2 * bleed) * devicePixelRatio;
+				// Draw in the area's coordinates; the bleed sits at negative/overflow positions
+				ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, bleed * devicePixelRatio, bleed * devicePixelRatio);
+				geometry = layout(width, height);
+				state.lit = geometry.dots.map(() => 0);
 				draw(performance.now());
 			}
 
-			// Advances the animation state; returns whether anything is still moving
+			// Advances the state one frame; returns whether anything is still moving
 			function step(now) {
-				if (hint) {
-					// Sweep a cursor-less bulge from top to bottom, then end with a burst
-					const t = Math.min((now - hint.start) / HINT_DURATION, 1);
+				const { width, height, cols, rows, dots } = geometry;
+
+				if (state.sweep) {
+					// Push a cursor-less bulge from top to bottom, then end with a burst
+					const t = Math.min((now - state.sweep.start) / SWEEP_DURATION, 1);
 					const eased = (1 - Math.cos(t * Math.PI)) / 2;
-					field = { x: width / 2, y: height * (HINT_FROM + (HINT_TO - HINT_FROM) * eased), reach: REACH, cursor: false };
-					strength = Math.sin(t * Math.PI) * HINT_STRENGTH;
+					state.field = { x: width / 2, y: height * (SWEEP_FROM + (SWEEP_TO - SWEEP_FROM) * eased), reach: REACH, cursor: false };
+					state.strength = Math.sin(t * Math.PI) * SWEEP_STRENGTH;
 					if (t === 1) {
-						hint = null;
-						bursts.push({ x: field.x, y: field.y, start: now });
+						state.sweep = null;
+						state.bursts.push({ x: state.field.x, y: state.field.y, start: now });
 					}
 				} else {
-					strength = ease(strength, target);
+					state.strength = ease(state.strength, state.target);
 				}
-				bursts = bursts.filter(burst => now - burst.start < BURST_DURATION);
+				state.bursts = state.bursts.filter(burst => now - burst.start < BURST_DURATION);
 
-				// The hovered link's picture: its dots grow, the rest shrink, centered in the grid
-				const bitmap = PICTURES[picture];
+				// The picture, centered in the grid: its dots grow and the rest shrink
+				const bitmap = PICTURES[state.picture];
 				const fits = Boolean(bitmap) && bitmap.length <= rows && bitmap[0].length <= cols;
-				const top = Math.floor((rows - bitmap?.length) / 2), left = Math.floor((cols - bitmap?.[0].length) / 2);
-				dim = ease(dim, fits ? 1 : 0);
-				let settled = dim === (fits ? 1 : 0);
-				for (const dot of dots) {
-					const goal = fits && bitmap[dot.row - top]?.[dot.col - left] === '#' ? 1 : 0;
-					dot.lit = ease(dot.lit, goal);
-					settled &&= dot.lit === goal;
-				}
+				const top = fits ? Math.floor((rows - bitmap.length) / 2) : 0;
+				const left = fits ? Math.floor((cols - bitmap[0].length) / 2) : 0;
+				state.dim = ease(state.dim, fits ? 1 : 0);
+				let settled = state.dim === (fits ? 1 : 0);
+				dots.forEach(({ col, row }, i) => {
+					const goal = fits && bitmap[row - top]?.[col - left] === '#' ? 1 : 0;
+					state.lit[i] = ease(state.lit[i], goal);
+					settled &&= state.lit[i] === goal;
+				});
 
-				return Boolean(hint) || bursts.length > 0 || strength !== target || !settled;
+				return Boolean(state.sweep) || state.bursts.length > 0 || state.strength !== state.target || !settled;
 			}
 
+			// Paints the current state; reads it, never changes it
 			function draw(now) {
+				const { width, height, dots } = geometry;
+				const { field, strength, bursts, dim, lit } = state;
+
 				ctx.globalCompositeOperation = 'source-over';
 				ctx.globalAlpha = 1;
 				ctx.clearRect(-bleed, -bleed, width + 2 * bleed, height + 2 * bleed);
@@ -528,11 +585,11 @@
 				ctx.fillRect(0, 0, width, height);
 
 				const path = new Path2D();
-				for (const { x, y, lit } of dots) {
+				dots.forEach(({ x, y }, i) => {
 					const dx = x - field.x, dy = y - field.y, distance = Math.hypot(dx, dy) || 1;
 					const falloff = strength * Math.max(0, 1 - distance / field.reach) ** 2;
 					let cx = x + dx / distance * falloff * PUSH, cy = y + dy / distance * falloff * PUSH;
-					let r = RADIUS * (1 + GROW * falloff + PICTURE_GROW * lit - PICTURE_DIM * dim * (1 - lit));
+					let r = RADIUS * (1 + GROW * falloff + PICTURE_GROW * lit[i] - PICTURE_DIM * dim * (1 - lit[i]));
 
 					// Each burst is a ring that expands from the click and fades as it goes
 					for (const burst of bursts) {
@@ -545,13 +602,13 @@
 					}
 					path.moveTo(cx + r, cy);
 					path.arc(cx, cy, r, 0, Math.PI * 2);
-				}
+				});
 				cut(path, 'fill');
 
 				if (field.cursor && strength > 0.01) {
 					ctx.globalAlpha = strength;
 					ctx.lineWidth = 2;
-					cut(cursor(), 'stroke');
+					cut(cursor(field.x, field.y), 'stroke');
 				}
 			}
 
@@ -561,17 +618,17 @@
 				ctx[method](path);
 
 				ctx.save();
-				ctx.clip(outside, 'evenodd');
+				ctx.clip(geometry.outside, 'evenodd');
 				ctx.globalCompositeOperation = 'source-over';
 				ctx[method](path);
 				ctx.restore();
 			}
 
-			// Rounded viewfinder brackets
-			function cursor() {
+			// Rounded viewfinder brackets centered on a point
+			function cursor(cx, cy) {
 				const half = 14, corner = 3, arm = 4, path = new Path2D();
 				for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
-					const x = field.x + sx * half, y = field.y + sy * half;
+					const x = cx + sx * half, y = cy + sy * half;
 					path.moveTo(x, y - sy * (corner + arm));
 					path.arcTo(x, y, x - sx * corner, y, corner);
 					path.lineTo(x - sx * (corner + arm), y);
@@ -590,59 +647,49 @@
 				frame ??= requestAnimationFrame(tick);
 			}
 
+			// Viewport coordinates to the area's
+			function local(x, y) {
+				const { left, top } = area.getBoundingClientRect();
+				return { x: x - left, y: y - top };
+			}
+
+			// Controls. Points are viewport coordinates, like pointer events give.
+
 			function attract(x, y, { reach = REACH, cursor = false } = {}) {
-				hint = null;
-				field = { x, y, reach, cursor };
-				target = 1;
+				state.sweep = null;
+				state.field = { ...local(x, y), reach, cursor };
+				state.target = 1;
 				animate();
 			}
 
 			function release() {
-				target = 0;
+				state.target = 0;
 				animate();
 			}
 
-			area.addEventListener('pointermove', e => attract(e.offsetX, e.offsetY, { cursor: true }));
-			area.addEventListener('pointerleave', release);
-			area.addEventListener('pointerdown', e => {
-				bursts.push({ x: e.offsetX, y: e.offsetY, start: performance.now() });
+			function burst(x, y) {
+				state.bursts.push({ ...local(x, y), start: performance.now() });
 				animate();
-			});
-
-			// Hovering the arrow pushes dots away from its nearest edge
-			arrow.addEventListener('pointerenter', () => {
-				const a = area.getBoundingClientRect(), b = arrow.querySelector('svg').getBoundingClientRect();
-				const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-				attract(
-					clamp(a.left + width / 2, b.left, b.right) - a.left,
-					clamp(a.top + height / 2, b.top, b.bottom) - a.top,
-					{ reach: ARROW_REACH },
-				);
-			});
-			arrow.addEventListener('pointerleave', release);
-
-			// Hovering the name or hovering/focusing a link draws its picture
-			for (const link of document.querySelectorAll('[data-picture]')) {
-				const show = name => () => {
-					picture = name;
-					if (name) hint = null;
-					animate();
-				};
-				link.addEventListener('pointerenter', show(link.dataset.picture));
-				link.addEventListener('focus', show(link.dataset.picture));
-				link.addEventListener('pointerleave', show(null));
-				link.addEventListener('blur', show(null));
 			}
 
-			new ResizeObserver(layout).observe(area);
-
-			if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-				setTimeout(() => {
-					if (target || picture) return;
-					hint = { start: performance.now() };
-					animate();
-				}, HINT_DELAY);
+			// Draws a picture by name, or clears it with null; a picture also ends the sweep
+			function show(name) {
+				state.picture = name;
+				if (name) state.sweep = null;
+				animate();
 			}
+
+			// Runs the sweep, unless the dots are already busy with the pointer or a picture
+			function sweep() {
+				if (state.target || state.picture) return;
+				state.sweep = { start: performance.now() };
+				animate();
+			}
+
+			resize();
+			new ResizeObserver(resize).observe(area);
+
+			return { attract, release, burst, show, sweep };
 		}
 
 		// Copies the encoded address; if the clipboard is blocked, selects it for a manual copy instead
