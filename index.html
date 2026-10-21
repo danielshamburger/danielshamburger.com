@@ -18,6 +18,8 @@
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@600..800&display=swap">
+	<!-- Only the letters of the name, for the handwritten hover; loads without blocking the page -->
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Permanent+Marker&text=DanielShamburger&display=swap" media="print" onload="this.media = 'all'">
 	<style>
 		/* Typed so they can be animated: the page color and the scroll percentage */
 		@property --bg {
@@ -120,6 +122,45 @@
 			font-size: clamp(3rem, 8vw, 8rem);
 			/* Pull the large letters' built-in side spacing back so they line up with the label above */
 			margin-left: -0.04em;
+		}
+		/* The printed name and a handwritten copy share one spot. Hovering the letters writes the handwritten copy in,
+		   line by line, as the print fades out beneath it; leaving rewinds it */
+		.name {
+			display: grid;
+			justify-self: start;
+			pointer-events: none;
+		}
+		.name > * {
+			grid-area: 1 / 1;
+		}
+		.name br + .line {
+			--delay: 0.3s;
+		}
+		/* Only the printed letters respond to the pointer, not the empty space around them */
+		.name > :first-child .line {
+			pointer-events: auto;
+			transition: opacity 0.2s;
+		}
+		.name .written {
+			font-family: "Permanent Marker", cursive;
+			font-weight: 400;
+			letter-spacing: 0;
+			line-height: 1.05;
+			rotate: -2deg;
+			transform-origin: left center;
+		}
+		.name .written .line {
+			display: inline-block;
+			clip-path: inset(-0.3em 100% -0.3em -0.3em);
+			transition: clip-path 0.2s ease-in;
+		}
+		.name:hover > :first-child .line {
+			opacity: 0;
+			transition: opacity 0.35s var(--delay, 0s);
+		}
+		.name:hover .written .line {
+			clip-path: inset(-0.3em);
+			transition: clip-path 0.5s cubic-bezier(0.3, 0.7, 0.4, 1) var(--delay, 0s);
 		}
 
 		.about p {
@@ -263,6 +304,7 @@
 
 
 		@media (prefers-reduced-motion: reduce) {
+			.name .line,
 			.next svg {
 				transition: none;
 			}
@@ -296,7 +338,12 @@
 	<main>
 		<section class="intro">
 			<header class="mono">hello, my name is</header>
-			<h1>Daniel<br>Shamburger</h1>
+			<h1>
+				<span class="name">
+					<span><span class="line">Daniel</span><br><span class="line">Shamburger</span></span>
+					<span class="written" aria-hidden="true"><span class="line">Daniel</span><br><span class="line">Shamburger</span></span>
+				</span>
+			</h1>
 		</section>
 		<section class="about">
 			<p>Makes software.<br>Rides bikes.</p>
