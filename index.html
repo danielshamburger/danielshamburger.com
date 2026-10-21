@@ -4,6 +4,16 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Daniel Shamburger &middot; software developer</title>
+	<meta name="description" content="Daniel Shamburger makes software and rides bikes.">
+	<meta property="og:type" content="website">
+	<meta property="og:url" content="https://danielshamburger.com/">
+	<meta property="og:title" content="Daniel Shamburger">
+	<meta property="og:description" content="Makes software. Rides bikes.">
+	<meta property="og:image" content="https://danielshamburger.com/og.png">
+	<meta property="og:image:width" content="1200">
+	<meta property="og:image:height" content="630">
+	<meta property="og:image:alt" content="A green name tag that reads: hello, my name is Daniel Shamburger.">
+	<meta name="twitter:card" content="summary_large_image">
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'><circle cx='.5' cy='.5' r='.5' fill='%2381c08b'/></svg>">
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,9 +42,10 @@
 		@media (prefers-reduced-motion: no-preference) {
 			html { scroll-behavior: smooth; }
 		}
-		/* The browser drives color and percentage straight from the scroll position; other browsers get them from JS */
+		/* The browser drives color and percentage straight from the scroll position. Its stops are evenly spaced, so the
+		   script takes over (.scripted-scroll) in browsers without scroll timelines or when content stretches a section */
 		@supports (animation-timeline: scroll()) {
-			:root {
+			:root:not(.scripted-scroll) {
 				animation: page-scroll linear both;
 				animation-timeline: scroll(root);
 			}
@@ -75,7 +86,7 @@
 			display: flex;
 			flex-direction: column;
 			justify-content: center;
-			height: var(--section);
+			min-height: var(--section);
 			padding: 3.5vw;
 		}
 		h1, h2, .links a {
@@ -124,13 +135,15 @@
 		.links a {
 			position: relative;
 			display: block;
-			padding: 2rem 3.5vw;
+			padding: clamp(1rem, 4svh, 2rem) 3.5vw;
 			font-size: clamp(2.5rem, 6vw, 5rem);
 			text-decoration: none;
 			transition: padding-left 0.25s;
 		}
 		.links a::before {
 			content: attr(data-icon);
+			/* Empty alt text keeps the emoji out of the link's spoken name */
+			content: attr(data-icon) / "";
 			position: absolute;
 			top: 50%;
 			left: 3.5vw;
@@ -143,9 +156,25 @@
 			border-top: var(--line);
 		}
 		.links span {
+			position: relative;
 			display: inline-block;
-			margin-left: 0.2em;
-			font-weight: 300;
+			/* Cap height, so the arrow stands as tall as the capitals */
+			width: 0.72em;
+			margin-left: 0.25em;
+		}
+		.links span svg {
+			display: block;
+			overflow: visible;
+		}
+		/* Matches the text underline, which can't reach an SVG */
+		.links span::after {
+			content: "";
+			position: absolute;
+			inset-inline: 0;
+			top: calc(100% + 0.12em);
+			height: 0.08em;
+			background: currentColor;
+			visibility: hidden;
 		}
 		.links a:is(:hover, :focus-visible) {
 			background: var(--ink);
@@ -156,10 +185,12 @@
 		.links a:is(:hover, :focus-visible)::before {
 			opacity: 1;
 		}
-		.links a:is(:hover, :focus-visible),
-		.links a:is(:hover, :focus-visible) span {
+		.links a:is(:hover, :focus-visible) {
 			text-decoration: underline 0.08em;
 			text-underline-offset: 0.12em;
+		}
+		.links a:is(:hover, :focus-visible) span::after {
+			visibility: visible;
 		}
 
 		.contact h2 {
@@ -196,7 +227,7 @@
 			right: var(--gap);
 			width: var(--aside);
 			display: grid;
-			grid-template-rows: var(--row) 1fr 13rem;
+			grid-template-rows: var(--row) 1fr min(13rem, 35svh);
 			height: var(--section);
 			border-left: var(--line);
 			background: var(--bg);
@@ -251,6 +282,13 @@
 		}
 
 
+		@media (prefers-reduced-motion: reduce) {
+			.links a,
+			.next svg {
+				transition: none;
+			}
+		}
+
 		@media (max-width: 700px) {
 			:root {
 				--gap: 12px;
@@ -286,22 +324,22 @@
 		</section>
 		<section class="links">
 			<ul role="list">
-				<li><a href="https://www.linkedin.com/in/danielshamburger/" data-icon="🧑‍💼">LinkedIn<span>↗</span></a></li>
-				<li><a href="https://github.com/danielshamburger/" data-icon="👨‍💻">GitHub<span>↗</span></a></li>
-				<li><a href="https://www.strava.com/athletes/2136969" data-icon="🚴🏻‍♂️">Strava<span>↗</span></a></li>
+				<li><a href="https://www.linkedin.com/in/danielshamburger/" data-icon="🧑‍💼">LinkedIn<span aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></svg></span></a></li>
+				<li><a href="https://github.com/danielshamburger/" data-icon="👨‍💻">GitHub<span aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></svg></span></a></li>
+				<li><a href="https://www.strava.com/athletes/2136969" data-icon="🚴🏻‍♂️">Strava<span aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></svg></span></a></li>
 			</ul>
 		</section>
 		<section class="contact">
 			<h2>Get in touch</h2>
 			<div class="terminal mono">
-				<code>aGVsbG9AZGFuaWVsc2hhbWJ1cmdlci5jb20=</code>
-				<button class="mono" type="button">COPY</button>
+				<code tabindex="0">aGVsbG9AZGFuaWVsc2hhbWJ1cmdlci5jb20=</code>
+				<button class="mono" type="button" aria-live="polite">COPY</button>
 			</div>
 		</section>
 	</main>
 	<aside>
-		<div class="progress mono"></div>
-		<div class="dots"><canvas></canvas></div>
+		<div class="progress mono" aria-hidden="true"></div>
+		<div class="dots" aria-hidden="true"><canvas></canvas></div>
 		<button class="next" type="button" aria-label="Next section">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="miter">
 				<path d="M12 2v20M3 13l9 9 9-9"/>
@@ -320,29 +358,37 @@
 		// (arrow flip, progress label color) and drives color and percentage itself where CSS can't
 		function scrollEffects() {
 			const root = document.documentElement;
-			const section = document.querySelector('section');
+			const sections = [...document.querySelectorAll('section')];
 			const progress = document.querySelector('.progress');
-			const fallback = !CSS.supports('animation-timeline: scroll()');
+			const supported = CSS.supports('animation-timeline: scroll()');
 			// Same stops as @keyframes page-scroll
 			const colors = [[129, 192, 139], [240, 195, 216], [137, 190, 227], [236, 223, 138]];
-			let sectionHeight, maxScroll, filled, atEnd;
+			let starts, maxScroll, scripted, filled, atEnd;
 
 			// Measured on resize only, so scrolling never forces a layout
 			function measure() {
-				sectionHeight = section.offsetHeight;
+				// The scroll position at which each section reaches the top of the frame
+				starts = sections.map(section => section.offsetTop - sections[0].offsetTop);
 				maxScroll = root.scrollHeight - innerHeight;
+				const height = sections[0].offsetHeight;
+				scripted = !supported || sections.some(section => Math.abs(section.offsetHeight - height) > 1);
+				root.classList.toggle('scripted-scroll', scripted);
+				if (!scripted) {
+					root.style.removeProperty('--bg');
+					root.style.removeProperty('--percent');
+				}
 				update();
 			}
 
 			function update() {
 				// Clamped because macOS overscroll reports positions past either end
 				const scroll = Math.min(Math.max(scrollY, 0), maxScroll);
-				const position = scroll / sectionHeight;
 				const percent = Math.round(scroll / maxScroll * 100);
 
-				if (fallback) {
-					const i = Math.min(Math.floor(position), colors.length - 2);
-					const t = Math.min(position - i, 1);
+				if (scripted) {
+					// Blend between the colors of the sections on either side of the scroll position
+					const i = Math.min(Math.max(starts.findLastIndex(start => start <= scroll), 0), colors.length - 2);
+					const t = Math.min((scroll - starts[i]) / (starts[i + 1] - starts[i]), 1);
 					const rgb = colors[i].map((c, n) => Math.round(c + (colors[i + 1][n] - c) * t));
 					root.style.setProperty('--bg', `rgb(${rgb})`);
 					root.style.setProperty('--percent', percent);
@@ -353,7 +399,8 @@
 					progress.classList.toggle('filled', filled);
 				}
 
-				const nextAtEnd = Math.round(position) === colors.length - 1;
+				// Flips once the last section is more than halfway in
+				const nextAtEnd = scroll >= (starts.at(-2) + starts.at(-1)) / 2;
 				if (nextAtEnd !== atEnd) {
 					atEnd = nextAtEnd;
 					arrow.classList.toggle('top', atEnd);
@@ -362,11 +409,12 @@
 			}
 
 			arrow.addEventListener('click', () => {
-				const index = Math.floor(scrollY / sectionHeight + 0.01) + 1;
-				scrollTo({ top: atEnd ? 0 : index * sectionHeight });
+				scrollTo({ top: atEnd ? 0 : starts.find(start => start > scrollY + 1) ?? 0 });
 			});
 			addEventListener('scroll', update);
 			addEventListener('resize', measure);
+			// Catches sections growing after fonts load or text is resized
+			new ResizeObserver(measure).observe(document.querySelector('main'));
 			measure();
 		}
 
