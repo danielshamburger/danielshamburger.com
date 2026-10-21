@@ -133,24 +133,10 @@
 			padding: 0;
 		}
 		.links a {
-			position: relative;
 			display: block;
 			padding: clamp(1rem, 4svh, 2rem) 3.5vw;
 			font-size: clamp(2.5rem, 6vw, 5rem);
 			text-decoration: none;
-			transition: padding-left 0.25s;
-		}
-		.links a::before {
-			content: attr(data-icon);
-			/* Empty alt text keeps the emoji out of the link's spoken name */
-			content: attr(data-icon) / "";
-			position: absolute;
-			top: 50%;
-			left: 3.5vw;
-			translate: 0 -50%;
-			font-size: 0.8em;
-			opacity: 0;
-			transition: opacity 0.25s;
 		}
 		.links li + li {
 			border-top: var(--line);
@@ -180,12 +166,6 @@
 			background: var(--ink);
 			color: var(--bg);
 			outline: none;
-			padding-left: calc(3.5vw + 1.2em);
-		}
-		.links a:is(:hover, :focus-visible)::before {
-			opacity: 1;
-		}
-		.links a:is(:hover, :focus-visible) {
 			text-decoration: underline 0.08em;
 			text-underline-offset: 0.12em;
 		}
@@ -206,8 +186,8 @@
 			flex: 1;
 			min-width: 0;
 			padding: 1.5rem;
-			overflow-x: auto;
-			white-space: nowrap;
+			/* Base64 has no spaces, so allow breaks anywhere */
+			overflow-wrap: anywhere;
 			font-size: clamp(0.8rem, 1.4vw, 1.1rem);
 		}
 		.terminal button {
@@ -283,7 +263,6 @@
 
 
 		@media (prefers-reduced-motion: reduce) {
-			.links a,
 			.next svg {
 				transition: none;
 			}
@@ -324,15 +303,15 @@
 		</section>
 		<section class="links">
 			<ul role="list">
-				<li><a href="https://www.linkedin.com/in/danielshamburger/" data-icon="🧑‍💼">LinkedIn<span aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></svg></span></a></li>
-				<li><a href="https://github.com/danielshamburger/" data-icon="👨‍💻">GitHub<span aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></svg></span></a></li>
-				<li><a href="https://www.strava.com/athletes/2136969" data-icon="🚴🏻‍♂️">Strava<span aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></svg></span></a></li>
+				<li><a href="https://www.linkedin.com/in/danielshamburger/" data-picture="linkedin">LinkedIn<span aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></svg></span></a></li>
+				<li><a href="https://github.com/danielshamburger/" data-picture="github">GitHub<span aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></svg></span></a></li>
+				<li><a href="https://www.strava.com/athletes/2136969" data-picture="strava">Strava<span aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor"><path d="M1 13 13 1M3.5 1H13v9.5"/></svg></span></a></li>
 			</ul>
 		</section>
 		<section class="contact">
 			<h2>Get in touch</h2>
 			<div class="terminal mono">
-				<code tabindex="0">aGVsbG9AZGFuaWVsc2hhbWJ1cmdlci5jb20=</code>
+				<code>aGVsbG9AZGFuaWVsc2hhbWJ1cmdlci5jb20=</code>
 				<button class="mono" type="button" aria-live="polite">COPY</button>
 			</div>
 		</section>
@@ -424,7 +403,40 @@
 			const SPACING = 14, MARGIN = 12, RADIUS = 1.5, REACH = 100, PUSH = 18, GROW = 1.4, EASE = 0.2;
 			const BURST_DURATION = 600, BURST_REACH = 320, BURST_WIDTH = 30, BURST_PUSH = 18, BURST_GROW = 1.5;
 			const HINT_DELAY = 1000, HINT_DURATION = 1200, HINT_STRENGTH = 0.7, HINT_FROM = 0.15, HINT_TO = 0.85;
-			const ARROW_REACH = 170;
+			const ARROW_REACH = 170, PICTURE_GROW = 1.3, PICTURE_DIM = 0.6;
+			// One character per dot; at most 11 wide so they fit the narrowest sidebar
+			const PICTURES = {
+				linkedin: [
+					'##.........',
+					'##.........',
+					'...........',
+					'##.##.###..',
+					'##.#######.',
+					'##.##...##.',
+					'##.##...##.',
+					'##.##...##.',
+					'##.##...##.',
+				],
+				github: [
+					'.#########.',
+					'.#.#.....#.',
+					'.#..#....#.',
+					'.#.#.....#.',
+					'.#.......#.',
+					'.#########.',
+					'###########',
+				],
+				strava: [
+					'..###..##..',
+					'...#....#..',
+					'...######..',
+					'...#..#.#..',
+					'.##.##..##.',
+					'#..#.#.#..#',
+					'#..#...#..#',
+					'.##.....##.',
+				],
+			};
 
 			const area = document.querySelector('.dots');
 			const canvas = area.querySelector('canvas');
@@ -432,9 +444,15 @@
 			const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink');
 			const bleed = Number.parseFloat(getComputedStyle(area).getPropertyValue('--bleed'));
 
-			let width, height, dots = [], outside;
+			let width, height, cols, rows, dots = [], outside;
 			let field = { x: 0, y: 0, reach: REACH, cursor: false };
-			let strength = 0, target = 0, bursts = [], hint = null, frame = null;
+			let strength = 0, target = 0, bursts = [], hint = null, frame = null, picture = null, dim = 0;
+
+			// Moves a value a step toward its goal, snapping once it's close enough to stop animating
+			const ease = (value, goal) => {
+				const next = value + (goal - value) * EASE;
+				return Math.abs(goal - next) < 0.001 ? goal : next;
+			};
 
 			function layout() {
 				({ width, height } = area.getBoundingClientRect());
@@ -448,8 +466,10 @@
 					const n = Math.max(1, Math.round((size - 2 * MARGIN) / SPACING));
 					return Array.from({ length: n + 1 }, (_, i) => MARGIN + i * (size - 2 * MARGIN) / n);
 				};
-				const xs = axis(width);
-				dots = axis(height).flatMap(y => xs.map(x => [x, y]));
+				const xs = axis(width), ys = axis(height);
+				cols = xs.length;
+				rows = ys.length;
+				dots = ys.flatMap((y, row) => xs.map((x, col) => ({ x, y, col, row, lit: 0 })));
 
 				// The bleed ring around the area, where shapes are drawn in ink instead of cut out
 				outside = new Path2D();
@@ -472,11 +492,23 @@
 						bursts.push({ x: field.x, y: field.y, start: now });
 					}
 				} else {
-					strength += (target - strength) * EASE;
-					if (Math.abs(target - strength) < 0.001) strength = target;
+					strength = ease(strength, target);
 				}
 				bursts = bursts.filter(burst => now - burst.start < BURST_DURATION);
-				return Boolean(hint) || bursts.length > 0 || strength !== target;
+
+				// The hovered link's picture: its dots grow, the rest shrink, centered in the grid
+				const bitmap = PICTURES[picture];
+				const fits = Boolean(bitmap) && bitmap.length <= rows && bitmap[0].length <= cols;
+				const top = Math.floor((rows - bitmap?.length) / 2), left = Math.floor((cols - bitmap?.[0].length) / 2);
+				dim = ease(dim, fits ? 1 : 0);
+				let settled = dim === (fits ? 1 : 0);
+				for (const dot of dots) {
+					const goal = fits && bitmap[dot.row - top]?.[dot.col - left] === '#' ? 1 : 0;
+					dot.lit = ease(dot.lit, goal);
+					settled &&= dot.lit === goal;
+				}
+
+				return Boolean(hint) || bursts.length > 0 || strength !== target || !settled;
 			}
 
 			function draw(now) {
@@ -487,11 +519,11 @@
 				ctx.fillRect(0, 0, width, height);
 
 				const path = new Path2D();
-				for (const [x, y] of dots) {
+				for (const { x, y, lit } of dots) {
 					const dx = x - field.x, dy = y - field.y, distance = Math.hypot(dx, dy) || 1;
 					const falloff = strength * Math.max(0, 1 - distance / field.reach) ** 2;
 					let cx = x + dx / distance * falloff * PUSH, cy = y + dy / distance * falloff * PUSH;
-					let r = RADIUS * (1 + GROW * falloff);
+					let r = RADIUS * (1 + GROW * falloff + PICTURE_GROW * lit - PICTURE_DIM * dim * (1 - lit));
 
 					// Each burst is a ring that expands from the click and fades as it goes
 					for (const burst of bursts) {
@@ -579,6 +611,18 @@
 				);
 			});
 			arrow.addEventListener('pointerleave', release);
+
+			// Hovering or focusing a link draws its picture
+			for (const link of document.querySelectorAll('[data-picture]')) {
+				const show = name => () => {
+					picture = name;
+					animate();
+				};
+				link.addEventListener('pointerenter', show(link.dataset.picture));
+				link.addEventListener('focus', show(link.dataset.picture));
+				link.addEventListener('pointerleave', show(null));
+				link.addEventListener('blur', show(null));
+			}
 
 			new ResizeObserver(layout).observe(area);
 
