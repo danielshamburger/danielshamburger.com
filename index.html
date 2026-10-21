@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 	<title>Daniel Shamburger &middot; software developer</title>
 	<meta name="description" content="Daniel Shamburger makes software and rides bikes.">
 	<meta property="og:type" content="website">
@@ -30,7 +30,13 @@
 			--line: 2px solid var(--ink);
 			--mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 			--gap: 24px;
-			--section: calc(100svh - 2 * var(--gap));
+			/* The frame's distance from each screen edge. The page covers the whole screen (viewport-fit=cover), so the
+			   frame keeps clear of the notch, status bar and home indicator with the device's safe areas */
+			--frame-top: calc(var(--gap) + env(safe-area-inset-top, 0px));
+			--frame-right: calc(var(--gap) + env(safe-area-inset-right, 0px));
+			--frame-bottom: calc(var(--gap) + env(safe-area-inset-bottom, 0px));
+			--frame-left: calc(var(--gap) + env(safe-area-inset-left, 0px));
+			--section: calc(100svh - var(--frame-top) - var(--frame-bottom));
 			--aside: clamp(160px, 25vw, 320px);
 			--row: 3rem;
 		}
@@ -59,20 +65,18 @@
 		body {
 			display: grid;
 			grid-template-columns: minmax(0, 1fr) var(--aside);
-			padding: var(--gap);
+			padding: var(--frame-top) var(--frame-right) var(--frame-bottom) var(--frame-left);
 			background: var(--bg);
 			color: var(--ink);
 			font-family: Inter, system-ui, sans-serif;
 		}
-		/* Fixed frame: masks the gutters and draws the outer line while the page scrolls (and bounces) underneath. It
-		   overshoots the viewport because iOS Safari also paints the page under its status bar and floating toolbars,
-		   outside the area fixed elements are positioned in */
+		/* Fixed frame: masks the gutters and draws the outer line while the page scrolls (and bounces) underneath */
 		body::after {
-			--overshoot: 200px;
 			content: "";
 			position: fixed;
-			inset: calc(-1 * var(--overshoot));
-			border: calc(var(--gap) + var(--overshoot)) solid var(--bg);
+			inset: 0;
+			border: solid var(--bg);
+			border-width: var(--frame-top) var(--frame-right) var(--frame-bottom) var(--frame-left);
 			box-shadow: inset 0 0 0 2px var(--ink);
 			pointer-events: none;
 		}
@@ -201,8 +205,8 @@
 
 		aside {
 			position: fixed;
-			top: var(--gap);
-			right: var(--gap);
+			top: var(--frame-top);
+			right: var(--frame-right);
 			width: var(--aside);
 			display: grid;
 			grid-template-rows: var(--row) 1fr min(13rem, 35svh);
@@ -273,16 +277,16 @@
 			:root {
 				--gap: 12px;
 				--bar: 5rem;
-				--section: calc(100svh - 2 * var(--gap) - var(--bar));
+				--section: calc(100svh - var(--frame-top) - var(--frame-bottom) - var(--bar));
 			}
 			body {
 				grid-template-columns: minmax(0, 1fr);
-				padding-bottom: calc(var(--gap) + var(--bar));
+				padding-bottom: calc(var(--frame-bottom) + var(--bar));
 			}
 			aside {
 				top: auto;
-				bottom: var(--gap);
-				left: var(--gap);
+				bottom: var(--frame-bottom);
+				left: var(--frame-left);
 				width: auto;
 				grid-template: auto / 1fr 1fr var(--bar);
 				height: var(--bar);
