@@ -64,12 +64,15 @@
 			color: var(--ink);
 			font-family: Inter, system-ui, sans-serif;
 		}
-		/* Fixed frame: masks the gutters and draws the outer line while the page scrolls (and bounces) underneath */
+		/* Fixed frame: masks the gutters and draws the outer line while the page scrolls (and bounces) underneath. It
+		   overshoots the viewport because iOS Safari also paints the page under its status bar and floating toolbars,
+		   outside the area fixed elements are positioned in */
 		body::after {
+			--overshoot: 200px;
 			content: "";
 			position: fixed;
-			inset: 0;
-			border: var(--gap) solid var(--bg);
+			inset: calc(-1 * var(--overshoot));
+			border: calc(var(--gap) + var(--overshoot)) solid var(--bg);
 			box-shadow: inset 0 0 0 2px var(--ink);
 			pointer-events: none;
 		}
@@ -620,18 +623,6 @@
 				ctx.restore();
 			}
 
-			// Rounded viewfinder brackets centered on a point
-			function cursor(cx, cy) {
-				const half = 14, corner = 3, arm = 4, path = new Path2D();
-				for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
-					const x = cx + sx * half, y = cy + sy * half;
-					path.moveTo(x, y - sy * (corner + arm));
-					path.arcTo(x, y, x - sx * corner, y, corner);
-					path.lineTo(x - sx * (corner + arm), y);
-				}
-				return path;
-			}
-
 			function tick() {
 				const now = performance.now();
 				const moving = step(now);
@@ -686,6 +677,18 @@
 			new ResizeObserver(resize).observe(area);
 
 			return { attract, release, burst, show, sweep };
+		}
+
+		// Rounded viewfinder brackets centered on a point
+		function cursor(cx, cy) {
+			const half = 14, corner = 3, arm = 4, path = new Path2D();
+			for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+				const x = cx + sx * half, y = cy + sy * half;
+				path.moveTo(x, y - sy * (corner + arm));
+				path.arcTo(x, y, x - sx * corner, y, corner);
+				path.lineTo(x - sx * (corner + arm), y);
+			}
+			return path;
 		}
 
 		// Copies the encoded address; if the clipboard is blocked, selects it for a manual copy instead
