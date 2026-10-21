@@ -9,9 +9,19 @@
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@600..800&display=swap">
 	<style>
+		/* Typed so they can be animated: the page color and the scroll percentage */
+		@property --bg {
+			syntax: "<color>";
+			inherits: true;
+			initial-value: #81c08b;
+		}
+		@property --percent {
+			syntax: "<integer>";
+			inherits: true;
+			initial-value: 0;
+		}
 		:root {
-			--bg: #81c08b;
-			--ink: #1c1c1c;
+			--ink: #2a2a2a;
 			--line: 2px solid var(--ink);
 			--mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 			--gap: 24px;
@@ -21,6 +31,20 @@
 		}
 		@media (prefers-reduced-motion: no-preference) {
 			html { scroll-behavior: smooth; }
+		}
+		/* The browser drives color and percentage straight from the scroll position; other browsers get them from JS */
+		@supports (animation-timeline: scroll()) {
+			:root {
+				animation: page-scroll linear both;
+				animation-timeline: scroll(root);
+			}
+		}
+		/* One stop per section; the first color is also the favicon fill */
+		@keyframes page-scroll {
+			0% { --bg: #81c08b; --percent: 0; }
+			33.333% { --bg: #f0c3d8; }
+			66.667% { --bg: #89bee3; }
+			100% { --bg: #ecdf8a; --percent: 100; }
 		}
 		* {
 			box-sizing: border-box;
@@ -125,7 +149,7 @@
 		}
 		.links a:is(:hover, :focus-visible) {
 			background: var(--ink);
-			color: #fafafa;
+			color: var(--bg);
 			outline: none;
 			padding-left: calc(3.5vw + 1.2em);
 		}
@@ -180,19 +204,30 @@
 		.progress {
 			display: grid;
 			place-items: center;
-			background: linear-gradient(to right, var(--ink) var(--progress, 0%), transparent 0);
+			background: linear-gradient(to right, var(--ink) calc(var(--percent) * 1%), transparent 0);
 			font-size: 0.9rem;
 			font-weight: 700;
 			transition: color 0.3s;
 		}
+		.progress::before {
+			counter-reset: percent var(--percent);
+			content: counter(percent) "%";
+		}
 		.progress.filled {
 			color: var(--bg);
 		}
-		/* Ink with transparent holes over the aside's background, so the layer never repaints when --bg changes */
 		.dots {
-			background: radial-gradient(transparent 1.5px, var(--ink) 2px) 0 0 / 14px 14px;
-			border-block: 4px solid var(--ink);
-			will-change: transform;
+			--bleed: 24px;
+			position: relative;
+			cursor: none;
+		}
+		/* Bleeds past the area so pushed dots can escape its edges; ignores the pointer so it never covers the arrow */
+		.dots canvas {
+			position: absolute;
+			inset: calc(-1 * var(--bleed));
+			width: calc(100% + 2 * var(--bleed));
+			height: calc(100% + 2 * var(--bleed));
+			pointer-events: none;
 		}
 		.next {
 			display: grid;
@@ -200,6 +235,12 @@
 			border: 0;
 			background: none;
 			cursor: pointer;
+			transition: background 0.2s, color 0.2s;
+		}
+		.next:is(:hover, :focus-visible) {
+			background: var(--ink);
+			color: var(--bg);
+			outline: none;
 		}
 		.next svg {
 			width: min(50%, 7rem);
@@ -208,6 +249,7 @@
 		.next.top svg {
 			rotate: 180deg;
 		}
+
 
 		@media (max-width: 700px) {
 			:root {
@@ -229,7 +271,6 @@
 				border-left: 0;
 				border-top: var(--line);
 			}
-			.dots { border-block: 0; }
 			.next svg { width: 2.5rem; }
 		}
 	</style>
@@ -237,7 +278,7 @@
 <body>
 	<main>
 		<section class="intro">
-			<header class="mono">hello my name is</header>
+			<header class="mono">hello, my name is</header>
 			<h1>Daniel<br>Shamburger</h1>
 		</section>
 		<section class="about">
@@ -259,8 +300,8 @@
 		</section>
 	</main>
 	<aside>
-		<div class="progress mono">0%</div>
-		<div class="dots"></div>
+		<div class="progress mono"></div>
+		<div class="dots"><canvas></canvas></div>
 		<button class="next" type="button" aria-label="Next section">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="miter">
 				<path d="M12 2v20M3 13l9 9 9-9"/>
@@ -268,45 +309,258 @@
 		</button>
 	</aside>
 
-	<script>
-		const colors = [[129, 192, 139], [240, 195, 216], [137, 190, 227], [236, 223, 138]];
-		const section = document.querySelector('section');
-		const progress = document.querySelector('.progress');
-		const next = document.querySelector('.next');
-		const copy = document.querySelector('.terminal button');
+	<script type="module">
+		const arrow = document.querySelector('.next');
 
-		function update() {
-			const position = scrollY / section.offsetHeight;
-			const i = Math.min(Math.floor(position), colors.length - 2);
-			const t = Math.min(position - i, 1);
-			const rgb = colors[i].map((c, n) => Math.round(c + (colors[i + 1][n] - c) * t));
-			document.documentElement.style.setProperty('--bg', `rgb(${rgb})`);
+		scrollEffects();
+		dotGrid();
+		copyButton();
 
-			const percent = Math.round(scrollY / (document.documentElement.scrollHeight - innerHeight) * 100);
-			progress.textContent = percent + '%';
-			progress.style.setProperty('--progress', percent + '%');
-			progress.classList.toggle('filled', percent >= 50);
+		// Color and percentage come from CSS scroll-driven animations; this handles the thresholds
+		// (arrow flip, progress label color) and drives color and percentage itself where CSS can't
+		function scrollEffects() {
+			const root = document.documentElement;
+			const section = document.querySelector('section');
+			const progress = document.querySelector('.progress');
+			const fallback = !CSS.supports('animation-timeline: scroll()');
+			// Same stops as @keyframes page-scroll
+			const colors = [[129, 192, 139], [240, 195, 216], [137, 190, 227], [236, 223, 138]];
+			let sectionHeight, maxScroll, filled, atEnd;
 
-			const atEnd = Math.round(position) === colors.length - 1;
-			next.classList.toggle('top', atEnd);
-			next.ariaLabel = atEnd ? 'Back to top' : 'Next section';
+			// Measured on resize only, so scrolling never forces a layout
+			function measure() {
+				sectionHeight = section.offsetHeight;
+				maxScroll = root.scrollHeight - innerHeight;
+				update();
+			}
+
+			function update() {
+				// Clamped because macOS overscroll reports positions past either end
+				const scroll = Math.min(Math.max(scrollY, 0), maxScroll);
+				const position = scroll / sectionHeight;
+				const percent = Math.round(scroll / maxScroll * 100);
+
+				if (fallback) {
+					const i = Math.min(Math.floor(position), colors.length - 2);
+					const t = Math.min(position - i, 1);
+					const rgb = colors[i].map((c, n) => Math.round(c + (colors[i + 1][n] - c) * t));
+					root.style.setProperty('--bg', `rgb(${rgb})`);
+					root.style.setProperty('--percent', percent);
+				}
+
+				if (percent >= 50 !== filled) {
+					filled = percent >= 50;
+					progress.classList.toggle('filled', filled);
+				}
+
+				const nextAtEnd = Math.round(position) === colors.length - 1;
+				if (nextAtEnd !== atEnd) {
+					atEnd = nextAtEnd;
+					arrow.classList.toggle('top', atEnd);
+					arrow.ariaLabel = atEnd ? 'Back to top' : 'Next section';
+				}
+			}
+
+			arrow.addEventListener('click', () => {
+				const index = Math.floor(scrollY / sectionHeight + 0.01) + 1;
+				scrollTo({ top: atEnd ? 0 : index * sectionHeight });
+			});
+			addEventListener('scroll', update);
+			addEventListener('resize', measure);
+			measure();
 		}
 
-		next.addEventListener('click', () => {
-			const atEnd = next.classList.contains('top');
-			const index = Math.floor(scrollY / section.offsetHeight + 0.01) + 1;
-			scrollTo({ top: atEnd ? 0 : index * section.offsetHeight });
-		});
+		// Dots push away from a field (the pointer, the hovered arrow or the load-time hint) and grow as it gets close;
+		// clicks send out a shockwave
+		function dotGrid() {
+			const SPACING = 14, MARGIN = 12, RADIUS = 1.5, REACH = 100, PUSH = 18, GROW = 1.4, EASE = 0.2;
+			const BURST_DURATION = 600, BURST_REACH = 320, BURST_WIDTH = 30, BURST_PUSH = 18, BURST_GROW = 1.5;
+			const HINT_DELAY = 1000, HINT_DURATION = 1200, HINT_STRENGTH = 0.7, HINT_FROM = 0.15, HINT_TO = 0.85;
+			const ARROW_REACH = 170;
 
-		copy.addEventListener('click', async () => {
-			await navigator.clipboard.writeText(document.querySelector('.terminal code').textContent);
-			copy.textContent = 'COPIED';
-			setTimeout(() => copy.textContent = 'COPY', 1500);
-		});
+			const area = document.querySelector('.dots');
+			const canvas = area.querySelector('canvas');
+			const ctx = canvas.getContext('2d');
+			const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink');
+			const bleed = Number.parseFloat(getComputedStyle(area).getPropertyValue('--bleed'));
 
-		addEventListener('scroll', update);
-		addEventListener('resize', update);
-		update();
+			let width, height, dots = [], outside;
+			let field = { x: 0, y: 0, reach: REACH, cursor: false };
+			let strength = 0, target = 0, bursts = [], hint = null, frame = null;
+
+			function layout() {
+				({ width, height } = area.getBoundingClientRect());
+				canvas.width = (width + 2 * bleed) * devicePixelRatio;
+				canvas.height = (height + 2 * bleed) * devicePixelRatio;
+				// Draw in the area's coordinates; the bleed sits at negative/overflow positions
+				ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, bleed * devicePixelRatio, bleed * devicePixelRatio);
+
+				// Same margin on every side; spacing stretches a fraction of a pixel per axis to fit exactly
+				const axis = size => {
+					const n = Math.max(1, Math.round((size - 2 * MARGIN) / SPACING));
+					return Array.from({ length: n + 1 }, (_, i) => MARGIN + i * (size - 2 * MARGIN) / n);
+				};
+				const xs = axis(width);
+				dots = axis(height).flatMap(y => xs.map(x => [x, y]));
+
+				// The bleed ring around the area, where shapes are drawn in ink instead of cut out
+				outside = new Path2D();
+				outside.rect(-bleed, -bleed, width + 2 * bleed, height + 2 * bleed);
+				outside.rect(0, 0, width, height);
+
+				draw(performance.now());
+			}
+
+			// Advances the animation state; returns whether anything is still moving
+			function step(now) {
+				if (hint) {
+					// Sweep a cursor-less bulge from top to bottom, then end with a burst
+					const t = Math.min((now - hint.start) / HINT_DURATION, 1);
+					const eased = (1 - Math.cos(t * Math.PI)) / 2;
+					field = { x: width / 2, y: height * (HINT_FROM + (HINT_TO - HINT_FROM) * eased), reach: REACH, cursor: false };
+					strength = Math.sin(t * Math.PI) * HINT_STRENGTH;
+					if (t === 1) {
+						hint = null;
+						bursts.push({ x: field.x, y: field.y, start: now });
+					}
+				} else {
+					strength += (target - strength) * EASE;
+					if (Math.abs(target - strength) < 0.001) strength = target;
+				}
+				bursts = bursts.filter(burst => now - burst.start < BURST_DURATION);
+				return Boolean(hint) || bursts.length > 0 || strength !== target;
+			}
+
+			function draw(now) {
+				ctx.globalCompositeOperation = 'source-over';
+				ctx.globalAlpha = 1;
+				ctx.clearRect(-bleed, -bleed, width + 2 * bleed, height + 2 * bleed);
+				ctx.fillStyle = ctx.strokeStyle = ink;
+				ctx.fillRect(0, 0, width, height);
+
+				const path = new Path2D();
+				for (const [x, y] of dots) {
+					const dx = x - field.x, dy = y - field.y, distance = Math.hypot(dx, dy) || 1;
+					const falloff = strength * Math.max(0, 1 - distance / field.reach) ** 2;
+					let cx = x + dx / distance * falloff * PUSH, cy = y + dy / distance * falloff * PUSH;
+					let r = RADIUS * (1 + GROW * falloff);
+
+					// Each burst is a ring that expands from the click and fades as it goes
+					for (const burst of bursts) {
+						const age = (now - burst.start) / BURST_DURATION;
+						const bx = x - burst.x, by = y - burst.y, d = Math.hypot(bx, by) || 1;
+						const wave = Math.max(0, 1 - Math.abs(d - age * BURST_REACH) / BURST_WIDTH) * (1 - age) ** 2;
+						cx += bx / d * wave * BURST_PUSH;
+						cy += by / d * wave * BURST_PUSH;
+						r += RADIUS * BURST_GROW * wave;
+					}
+					path.moveTo(cx + r, cy);
+					path.arc(cx, cy, r, 0, Math.PI * 2);
+				}
+				cut(path, 'fill');
+
+				if (field.cursor && strength > 0.01) {
+					ctx.globalAlpha = strength;
+					ctx.lineWidth = 2;
+					cut(cursor(), 'stroke');
+				}
+			}
+
+			// Inside the area, punch the shape out of the ink; outside it, draw the shape in ink so it reads the same
+			function cut(path, method) {
+				ctx.globalCompositeOperation = 'destination-out';
+				ctx[method](path);
+
+				ctx.save();
+				ctx.clip(outside, 'evenodd');
+				ctx.globalCompositeOperation = 'source-over';
+				ctx[method](path);
+				ctx.restore();
+			}
+
+			// Rounded viewfinder brackets
+			function cursor() {
+				const half = 14, corner = 3, arm = 4, path = new Path2D();
+				for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+					const x = field.x + sx * half, y = field.y + sy * half;
+					path.moveTo(x, y - sy * (corner + arm));
+					path.arcTo(x, y, x - sx * corner, y, corner);
+					path.lineTo(x - sx * (corner + arm), y);
+				}
+				return path;
+			}
+
+			function tick() {
+				const now = performance.now();
+				const moving = step(now);
+				draw(now);
+				frame = moving ? requestAnimationFrame(tick) : null;
+			}
+
+			function animate() {
+				frame ??= requestAnimationFrame(tick);
+			}
+
+			function attract(x, y, { reach = REACH, cursor = false } = {}) {
+				hint = null;
+				field = { x, y, reach, cursor };
+				target = 1;
+				animate();
+			}
+
+			function release() {
+				target = 0;
+				animate();
+			}
+
+			area.addEventListener('pointermove', e => attract(e.offsetX, e.offsetY, { cursor: true }));
+			area.addEventListener('pointerleave', release);
+			area.addEventListener('pointerdown', e => {
+				bursts.push({ x: e.offsetX, y: e.offsetY, start: performance.now() });
+				animate();
+			});
+
+			// Hovering the arrow pushes dots away from its nearest edge
+			arrow.addEventListener('pointerenter', () => {
+				const a = area.getBoundingClientRect(), b = arrow.querySelector('svg').getBoundingClientRect();
+				const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+				attract(
+					clamp(a.left + width / 2, b.left, b.right) - a.left,
+					clamp(a.top + height / 2, b.top, b.bottom) - a.top,
+					{ reach: ARROW_REACH },
+				);
+			});
+			arrow.addEventListener('pointerleave', release);
+
+			new ResizeObserver(layout).observe(area);
+
+			if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+				setTimeout(() => {
+					if (target) return;
+					hint = { start: performance.now() };
+					animate();
+				}, HINT_DELAY);
+			}
+		}
+
+		// Copies the encoded address; if the clipboard is blocked, selects it for a manual copy instead
+		function copyButton() {
+			const button = document.querySelector('.terminal button');
+			const code = document.querySelector('.terminal code');
+			let reset;
+
+			button.addEventListener('click', async () => {
+				try {
+					await navigator.clipboard.writeText(code.textContent);
+					button.textContent = 'COPIED';
+				} catch {
+					getSelection().selectAllChildren(code);
+					button.textContent = 'FAILED';
+				}
+				clearTimeout(reset);
+				reset = setTimeout(() => button.textContent = 'COPY', 1500);
+			});
+		}
 	</script>
 </body>
 </html>
