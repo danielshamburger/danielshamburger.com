@@ -1,31 +1,46 @@
 import { copyButton } from './copy-button';
-import { dotGrid, type DotGrid } from './dot-grid';
+import { dotGrid } from './dot-grid';
 import { scrollEffects } from './scroll-effects';
 import { clamp, required } from './util';
 
-const ARROW_REACH = 170, SWEEP_DELAY = 1000;
+// ARROW_LANDING: how long after an arrow click a bottom arrival counts as the click's own scroll landing
+const ARROW_REACH = 170, SWEEP_DELAY = 1000, ARROW_LANDING = 1500;
 
 const arrow = required<HTMLButtonElement>('.next');
 const dotArea = required('.dots');
 
-scrollEffects(arrow);
-wireDots(dotGrid(dotArea));
+const grid = dotGrid(dotArea);
+let arrowClicked = -Infinity;
+
+// Reaching the bottom ripples the dots, unless an arrow click just took you there (the click already rippled)
+scrollEffects(arrow, {
+	onBottom: () => {
+		if (performance.now() - arrowClicked > ARROW_LANDING) grid.burst(...arrowEdge());
+	},
+});
+wireDots();
 copyButton(required<HTMLButtonElement>('.terminal button'), required('.terminal code'));
 
+// The arrow's edge nearest the dot grid, where the arrow's effects on the dots start from
+function arrowEdge() {
+	const area = dotArea.getBoundingClientRect(), icon = required('svg', arrow).getBoundingClientRect();
+	return [clamp(area.left + area.width / 2, icon.left, icon.right), clamp(area.top + area.height / 2, icon.top, icon.bottom)] as const;
+}
+
 // What makes the dot grid react: the pointer over it, the arrow, the name and links, and a sweep after load
-function wireDots(grid: DotGrid) {
+// (reaching the bottom of the page is wired through scrollEffects above)
+function wireDots() {
 	dotArea.addEventListener('pointermove', e => grid.attract(e.clientX, e.clientY, { cursor: true }));
 	dotArea.addEventListener('pointerleave', grid.release);
 	dotArea.addEventListener('pointerdown', e => grid.burst(e.clientX, e.clientY));
 
-	// Hovering the arrow pushes dots away from its edge nearest the grid
-	arrow.addEventListener('pointerenter', () => {
-		const area = dotArea.getBoundingClientRect(), icon = required('svg', arrow).getBoundingClientRect();
-		const x = clamp(area.left + area.width / 2, icon.left, icon.right);
-		const y = clamp(area.top + area.height / 2, icon.top, icon.bottom);
-		grid.attract(x, y, { reach: ARROW_REACH });
-	});
+	// Hovering the arrow pushes dots away from its edge nearest the grid; clicking ripples out from it
+	arrow.addEventListener('pointerenter', () => grid.attract(...arrowEdge(), { reach: ARROW_REACH }));
 	arrow.addEventListener('pointerleave', grid.release);
+	arrow.addEventListener('click', () => {
+		arrowClicked = performance.now();
+		grid.burst(...arrowEdge());
+	});
 
 	// The name and each link draw their picture while hovered or focused
 	for (const element of document.querySelectorAll<HTMLElement>('[data-picture]')) {
@@ -37,5 +52,10 @@ function wireDots(grid: DotGrid) {
 		element.addEventListener('blur', hide);
 	}
 
-	if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setTimeout(grid.sweep, SWEEP_DELAY);
+	// The sweep demonstrates the dots after load; skipped for reduced motion, or if the arrow was already clicked
+	if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		setTimeout(() => {
+			if (arrowClicked === -Infinity) grid.sweep();
+		}, SWEEP_DELAY);
+	}
 }

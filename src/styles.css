@@ -87,6 +87,13 @@ h1, h2, .links a {
 .mono {
 	font-family: var(--mono);
 }
+/* Small lowercase mono labels: the name tag's "hello, my name is" and the links' "find me on" */
+.label {
+	font-size: 0.9rem;
+	font-weight: 400;
+	letter-spacing: 0.3em;
+	line-height: normal;
+}
 
 /* Name tag: ink band on top, name in the open space below */
 .intro {
@@ -99,8 +106,6 @@ h1, h2, .links a {
 	padding: 0 3.5vw;
 	background: var(--ink);
 	color: var(--bg);
-	font-size: 0.9rem;
-	letter-spacing: 0.3em;
 }
 .intro h1 {
 	margin-block: auto;
@@ -119,6 +124,9 @@ h1, h2, .links a {
 
 .links, .links ul {
 	padding: 0;
+}
+.links h2 {
+	padding: 0 3.5vw;
 }
 .links a {
 	display: block;
