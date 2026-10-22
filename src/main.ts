@@ -9,7 +9,16 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const arrow = required<HTMLButtonElement>('.next');
 const dotArea = required('.dots');
 
-const grid = dotGrid(dotArea);
+const progress = required('.progress');
+
+// Dots pushed up past the area stay visible over the progress bar's fill
+const grid = dotGrid(dotArea, {
+	inked: () => {
+		const rect = progress.getBoundingClientRect();
+		rect.width *= Number.parseFloat(progress.style.getPropertyValue('--fill') || '0') / 100;
+		return [rect];
+	},
+});
 
 // Scrolling into the last section ripples the dots from the arrow, as it flips to "back to top"
 scrollEffects(arrow, {
@@ -31,7 +40,12 @@ function arrowEdge() {
 function wireDots() {
 	dotArea.addEventListener('pointermove', e => grid.attract(e.clientX, e.clientY, { cursor: true }));
 	dotArea.addEventListener('pointerleave', grid.release);
-	dotArea.addEventListener('pointerdown', e => grid.burst(e.clientX, e.clientY));
+	// Pressing ripples and starts a gravity well; letting go flings out whatever it gathered
+	dotArea.addEventListener('pointerdown', e => {
+		grid.burst(e.clientX, e.clientY);
+		grid.hold(e.clientX, e.clientY);
+	});
+	for (const end of ['pointerup', 'pointerleave', 'pointercancel']) dotArea.addEventListener(end, grid.fling);
 
 	// Hovering the arrow pushes dots away from its edge nearest the grid; clicking ripples out from it
 	arrow.addEventListener('pointerenter', () => grid.attract(...arrowEdge(), { reach: ARROW_REACH }));
