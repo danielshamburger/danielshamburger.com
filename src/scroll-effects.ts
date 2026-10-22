@@ -4,8 +4,9 @@ import { clamp, required } from './util';
 const COLORS: [number, number, number][] = [[129, 192, 139], [240, 195, 216], [137, 190, 227], [236, 223, 138]];
 
 // The color comes from a CSS scroll-driven animation (this drives it where CSS can't); this also sets the
-// percentage, which Safari won't animate as a whole number, and flips the arrow at the end
-export function scrollEffects(arrow: HTMLButtonElement) {
+// percentage, which Safari won't animate as a whole number, flips the arrow at the end, and calls onBottom each time
+// the page is scrolled all the way down
+export function scrollEffects(arrow: HTMLButtonElement, { onBottom }: { onBottom?: () => void } = {}) {
 	const root = document.documentElement;
 	const sections = [...document.querySelectorAll<HTMLElement>('section')];
 	const progress = required('.progress');
@@ -15,6 +16,7 @@ export function scrollEffects(arrow: HTMLButtonElement) {
 	let scripted = false;
 	let percent: number | undefined;
 	let atEnd: boolean | undefined;
+	let atBottom: boolean | undefined;
 
 	// Measured on resize only, so scrolling never forces a layout
 	function measure() {
@@ -54,6 +56,11 @@ export function scrollEffects(arrow: HTMLButtonElement) {
 			arrow.classList.toggle('top', atEnd);
 			arrow.ariaLabel = atEnd ? 'Back to top' : 'Next section';
 		}
+
+		// Only on arriving: not on load if the page opens at the bottom, and not again until it scrolls away
+		const nextAtBottom = scroll >= maxScroll - 1;
+		if (nextAtBottom && atBottom === false) onBottom?.();
+		atBottom = nextAtBottom;
 	}
 
 	arrow.addEventListener('click', () => {
