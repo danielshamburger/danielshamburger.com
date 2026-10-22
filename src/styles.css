@@ -131,7 +131,8 @@ h1, h2, .links a {
 .links a {
 	display: block;
 	padding: clamp(1rem, 4svh, 2rem) 3.5vw;
-	font-size: clamp(2.5rem, 6vw, 5rem);
+	/* Also capped by height, so the label and three links fit one screen on short displays */
+	font-size: clamp(2rem, min(6vw, 10svh), 5rem);
 	text-decoration: none;
 }
 .links li + li {
@@ -214,6 +215,8 @@ aside {
 	position: relative;
 	display: grid;
 	place-items: center;
+	/* Optically centered between the frame and the first row of dots, which sit below the row's edge */
+	padding-top: 6px;
 	font-size: 0.9rem;
 	font-weight: 700;
 }
@@ -225,6 +228,7 @@ aside {
 	inset: 0;
 	display: grid;
 	place-items: center;
+	padding-top: inherit;
 	background: var(--ink);
 	color: var(--bg);
 	clip-path: inset(0 calc(100% - var(--fill, 0%)) 0 0);
