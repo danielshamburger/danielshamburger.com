@@ -5,6 +5,7 @@ const SPACING = 14, MARGIN = 12, RADIUS = 1.5, REACH = 100, PUSH = 18, GROW = 1.
 const BURST_DURATION = 600, BURST_REACH = 320, BURST_WIDTH = 30, BURST_PUSH = 18, BURST_GROW = 1.5;
 const SWEEP_DURATION = 1200, SWEEP_STRENGTH = 0.7, SWEEP_FROM = 0.15, SWEEP_TO = 0.85;
 const PICTURE_GROW = 1.3, PICTURE_DIM = 0.6;
+const WELL_REACH = 200, WELL_PULL = 40, WELL_BUILD = 0.03, WELL_FLING = 0.3;
 
 interface Point {
 	x: number;
@@ -29,6 +30,8 @@ interface State {
 	field: Field; // the point the dots push away from
 	strength: number; // how hard the field pushes right now, easing toward target
 	target: number;
+	pull: number; // how hard the gravity well pulls dots toward the field point, easing toward pullTarget
+	pullTarget: number;
 	bursts: Burst[]; // click shockwaves still expanding
 	sweep: { start: number } | null; // the load-time sweep while it runs
 	picture: string | null; // name of the picture to draw
@@ -59,6 +62,10 @@ export interface DotGrid {
 	show(name: string | null): void;
 	// Runs the sweep, unless the dots are already busy with the pointer or a picture
 	sweep(): void;
+	// Starts a gravity well at a point, pulling dots in harder the longer it's held
+	hold(x: number, y: number): void;
+	// Lets the well go; dots it had gathered fling back out
+	fling(): void;
 }
 
 export interface DotGridOptions {
@@ -68,8 +75,8 @@ export interface DotGridOptions {
 }
 
 // Moves a value a step toward its goal, snapping once it's close enough to stop animating
-const ease = (value: number, goal: number) => {
-	const next = value + (goal - value) * EASE;
+const ease = (value: number, goal: number, rate = EASE) => {
+	const next = value + (goal - value) * rate;
 	return Math.abs(goal - next) < 0.001 ? goal : next;
 };
 
@@ -87,6 +94,8 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 		field: { x: 0, y: 0, reach: REACH, cursor: false },
 		strength: 0,
 		target: 0,
+		pull: 0,
+		pullTarget: 0,
 		bursts: [],
 		sweep: null,
 		picture: null,
@@ -141,6 +150,7 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 		} else {
 			state.strength = ease(state.strength, state.target);
 		}
+		state.pull = ease(state.pull, state.pullTarget, WELL_BUILD);
 		state.bursts = state.bursts.filter(burst => now - burst.start < BURST_DURATION);
 
 		// The picture, centered in the grid: its dots grow and the rest shrink
@@ -156,13 +166,13 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 			settled &&= state.lit[i] === goal;
 		});
 
-		return state.sweep !== null || state.bursts.length > 0 || state.strength !== state.target || !settled;
+		return state.sweep !== null || state.bursts.length > 0 || state.strength !== state.target || state.pull !== state.pullTarget || !settled;
 	}
 
 	// Paints the current state; reads it, never changes it
 	function draw(now: number) {
 		const { width, height, dots } = geometry;
-		const { field, strength, bursts, dim, lit } = state;
+		const { field, strength, pull, bursts, dim, lit } = state;
 
 		ctx.globalCompositeOperation = 'source-over';
 		ctx.globalAlpha = 1;
@@ -174,7 +184,10 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 		dots.forEach(({ x, y }, i) => {
 			const dx = x - field.x, dy = y - field.y, distance = Math.hypot(dx, dy) || 1;
 			const falloff = strength * Math.max(0, 1 - distance / field.reach) ** 2;
-			let cx = x + dx / distance * falloff * PUSH, cy = y + dy / distance * falloff * PUSH;
+			// The well pulls against the push, so dots gather in a ring just outside the cursor; never past the point
+			const gather = Math.min(pull * Math.max(0, 1 - distance / WELL_REACH) * WELL_PULL, distance * 0.8);
+			const shift = falloff * PUSH - gather;
+			let cx = x + dx / distance * shift, cy = y + dy / distance * shift;
 			let r = RADIUS * (1 + GROW * falloff + PICTURE_GROW * lit[i] - PICTURE_DIM * dim * (1 - lit[i]));
 
 			// Each burst is a ring that expands from the click and fades as it goes
@@ -265,6 +278,17 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 		sweep() {
 			if (state.target || state.picture) return;
 			state.sweep = { start: performance.now() };
+			animate();
+		},
+		hold(x, y) {
+			state.sweep = null;
+			state.field = { ...state.field, ...local(x, y) };
+			state.pullTarget = 1;
+			animate();
+		},
+		fling() {
+			if (state.pull > WELL_FLING) state.bursts.push({ x: state.field.x, y: state.field.y, start: performance.now() });
+			state.pull = state.pullTarget = 0;
 			animate();
 		},
 	};
