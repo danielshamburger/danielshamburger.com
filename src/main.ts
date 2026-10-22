@@ -9,7 +9,16 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const arrow = required<HTMLButtonElement>('.next');
 const dotArea = required('.dots');
 
-const grid = dotGrid(dotArea);
+const progress = required('.progress');
+
+// Dots pushed up past the area stay visible over the progress bar's fill
+const grid = dotGrid(dotArea, {
+	inked: () => {
+		const rect = progress.getBoundingClientRect();
+		rect.width *= Number.parseFloat(progress.style.getPropertyValue('--fill') || '0') / 100;
+		return [rect];
+	},
+});
 
 // Scrolling into the last section ripples the dots from the arrow, as it flips to "back to top"
 scrollEffects(arrow, {

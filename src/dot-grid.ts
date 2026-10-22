@@ -61,6 +61,12 @@ export interface DotGrid {
 	sweep(): void;
 }
 
+export interface DotGridOptions {
+	// Viewport rectangles where the page around the area is ink, so dots escaping into them are drawn in the
+	// background color instead
+	inked?: () => DOMRect[];
+}
+
 // Moves a value a step toward its goal, snapping once it's close enough to stop animating
 const ease = (value: number, goal: number) => {
 	const next = value + (goal - value) * EASE;
@@ -69,7 +75,7 @@ const ease = (value: number, goal: number) => {
 
 // A canvas of dots that push away from a point and grow as it gets close, ring out from clicks, and draw small
 // pictures. It knows nothing about the rest of the page: it returns its controls, and main.ts decides what drives them.
-export function dotGrid(area: HTMLElement): DotGrid {
+export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions = {}): DotGrid {
 	const canvas = required<HTMLCanvasElement>('canvas', area);
 	const ctx = context2d(canvas);
 	const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink');
@@ -192,7 +198,8 @@ export function dotGrid(area: HTMLElement): DotGrid {
 		}
 	}
 
-	// Inside the area, punch the shape out of the ink; outside it, draw the shape in ink so it reads the same
+	// Inside the area, punch the shape out of the ink; outside it, draw the shape in ink so it reads the same, or
+	// in the background color over ink
 	function cut(path: Path2D, mode: 'fill' | 'stroke') {
 		const paint = () => mode === 'fill' ? ctx.fill(path) : ctx.stroke(path);
 		ctx.globalCompositeOperation = 'destination-out';
@@ -202,6 +209,16 @@ export function dotGrid(area: HTMLElement): DotGrid {
 		ctx.clip(geometry.outside, 'evenodd');
 		ctx.globalCompositeOperation = 'source-over';
 		paint();
+		for (const rect of inked()) {
+			const { x, y } = local(rect.x, rect.y);
+			ctx.save();
+			ctx.beginPath();
+			ctx.rect(x, y, rect.width, rect.height);
+			ctx.clip();
+			ctx.fillStyle = ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg');
+			paint();
+			ctx.restore();
+		}
 		ctx.restore();
 	}
 
