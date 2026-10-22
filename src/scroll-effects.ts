@@ -12,6 +12,9 @@ export function scrollEffects(arrow: HTMLButtonElement, { onEnd }: { onEnd?: () 
 	const root = document.documentElement;
 	const sections = [...document.querySelectorAll<HTMLElement>('section')];
 	const progress = required('.progress');
+	const favicon = required<HTMLLinkElement>('link[rel="icon"]');
+	const themeColor = required<HTMLMetaElement>('meta[name="theme-color"]');
+	let shownColor = '';
 	const supported = CSS.supports('animation-timeline: scroll()');
 	let starts: number[] = [];
 	let maxScroll = 0;
@@ -38,16 +41,16 @@ export function scrollEffects(arrow: HTMLButtonElement, { onEnd }: { onEnd?: () 
 	function update(scrolled = false) {
 		// Clamped because macOS overscroll reports positions past either end
 		const scroll = clamp(scrollY, 0, maxScroll);
-		if (scripted) {
-			// How far through the sections the scroll is (0 at the first, 1 at the second...), then the two stops
-			// either side of that
-			const section = clamp(starts.findLastIndex(start => start <= scroll), 0, starts.length - 2);
-			const position = (section + Math.min((scroll - starts[section]) / (starts[section + 1] - starts[section]), 1))
-				* (COLORS.length - 1) / (starts.length - 1);
-			const i = Math.min(Math.floor(position), COLORS.length - 2), t = position - i;
-			const rgb = COLORS[i].map((c, n) => Math.round(c + (COLORS[i + 1][n] - c) * t));
-			root.style.setProperty('--bg', `rgb(${rgb})`);
-		}
+		// The page color here, worked out the same way the CSS animation does: how far through the sections the scroll
+		// is (0 at the first, 1 at the second...), then a blend of the two stops either side of that. The favicon
+		// and browser bar always use it; the page only when the CSS can't (reading the animated value back would
+		// lag a frame).
+		const section = clamp(starts.findLastIndex(start => start <= scroll), 0, starts.length - 2);
+		const position = (section + Math.min((scroll - starts[section]) / (starts[section + 1] - starts[section]), 1))
+			* (COLORS.length - 1) / (starts.length - 1);
+		const i = Math.min(Math.floor(position), COLORS.length - 2), t = position - i;
+		const color = `rgb(${COLORS[i].map((c, n) => Math.round(c + (COLORS[i + 1][n] - c) * t))})`;
+		if (scripted) root.style.setProperty('--bg', color);
 
 		// Only touches the page when the rounded number changes
 		const nextPercent = Math.round(scroll / maxScroll * 100);
@@ -55,6 +58,13 @@ export function scrollEffects(arrow: HTMLButtonElement, { onEnd }: { onEnd?: () 
 			percent = nextPercent;
 			progress.textContent = progress.dataset.label = `${percent}%`;
 			progress.style.setProperty('--fill', `${percent}%`);
+
+			// The favicon's circle and the browser bar follow the page color, updated as often as the percentage changes
+			if (color !== shownColor) {
+				shownColor = color;
+				themeColor.content = color;
+				favicon.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'><circle cx='.5' cy='.5' r='.5' fill='${encodeURIComponent(color)}'/></svg>`;
+			}
 		}
 
 		// Flips once the last section is more than halfway in
