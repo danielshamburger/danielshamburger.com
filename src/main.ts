@@ -27,7 +27,7 @@ scrollEffects(arrow, {
 	},
 });
 wireDots();
-copyButton(required<HTMLButtonElement>('.terminal button'), required('.terminal code'));
+copyButton(required<HTMLButtonElement>('.terminal button'), required('.terminal .encoded'));
 
 // The arrow's edge nearest the dot grid, where the arrow's effects on the dots start from
 function arrowEdge() {

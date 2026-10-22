@@ -1,7 +1,9 @@
 import { clamp, required } from './util';
 
-// Same stops as @keyframes page-scroll in styles.css
-const COLORS: [number, number, number][] = [[129, 192, 139], [240, 195, 216], [137, 190, 227], [236, 223, 138]];
+// Same stops as @keyframes page-scroll in styles.css: each section's color, with the oklch blend between each pair
+const COLORS: [number, number, number][] = [
+	[129, 192, 139], [226, 183, 137], [240, 195, 216], [198, 188, 236], [137, 190, 227], [138, 221, 192], [236, 223, 138],
+];
 
 // The color comes from a CSS scroll-driven animation (this drives it where CSS can't); this also sets the
 // percentage, which Safari won't animate as a whole number, and flips the arrow at the end, calling onEnd when the
@@ -37,9 +39,12 @@ export function scrollEffects(arrow: HTMLButtonElement, { onEnd }: { onEnd?: () 
 		// Clamped because macOS overscroll reports positions past either end
 		const scroll = clamp(scrollY, 0, maxScroll);
 		if (scripted) {
-			// Blend between the colors of the sections on either side of the scroll position
-			const i = clamp(starts.findLastIndex(start => start <= scroll), 0, COLORS.length - 2);
-			const t = Math.min((scroll - starts[i]) / (starts[i + 1] - starts[i]), 1);
+			// How far through the sections the scroll is (0 at the first, 1 at the second...), then the two stops
+			// either side of that
+			const section = clamp(starts.findLastIndex(start => start <= scroll), 0, starts.length - 2);
+			const position = (section + Math.min((scroll - starts[section]) / (starts[section + 1] - starts[section]), 1))
+				* (COLORS.length - 1) / (starts.length - 1);
+			const i = Math.min(Math.floor(position), COLORS.length - 2), t = position - i;
 			const rgb = COLORS[i].map((c, n) => Math.round(c + (COLORS[i + 1][n] - c) * t));
 			root.style.setProperty('--bg', `rgb(${rgb})`);
 		}
