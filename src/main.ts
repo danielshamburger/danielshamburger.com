@@ -3,19 +3,18 @@ import { dotGrid } from './dot-grid';
 import { scrollEffects } from './scroll-effects';
 import { clamp, required } from './util';
 
-// ARROW_LANDING: how long after an arrow click a bottom arrival counts as the click's own scroll landing
-const ARROW_REACH = 170, SWEEP_DELAY = 1000, ARROW_LANDING = 1500;
+const ARROW_REACH = 170, SWEEP_DELAY = 1000;
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const arrow = required<HTMLButtonElement>('.next');
 const dotArea = required('.dots');
 
 const grid = dotGrid(dotArea);
-let arrowClicked = -Infinity;
 
-// Reaching the bottom ripples the dots, unless an arrow click just took you there (the click already rippled)
+// Scrolling into the last section ripples the dots from the arrow, as it flips to "back to top"
 scrollEffects(arrow, {
-	onBottom: () => {
-		if (performance.now() - arrowClicked > ARROW_LANDING) grid.burst(...arrowEdge());
+	onEnd: () => {
+		if (!reducedMotion) grid.burst(...arrowEdge());
 	},
 });
 wireDots();
@@ -28,7 +27,7 @@ function arrowEdge() {
 }
 
 // What makes the dot grid react: the pointer over it, the arrow, the name and links, and a sweep after load
-// (reaching the bottom of the page is wired through scrollEffects above)
+// (the arrow flipping at the end is wired through scrollEffects above)
 function wireDots() {
 	dotArea.addEventListener('pointermove', e => grid.attract(e.clientX, e.clientY, { cursor: true }));
 	dotArea.addEventListener('pointerleave', grid.release);
@@ -37,10 +36,7 @@ function wireDots() {
 	// Hovering the arrow pushes dots away from its edge nearest the grid; clicking ripples out from it
 	arrow.addEventListener('pointerenter', () => grid.attract(...arrowEdge(), { reach: ARROW_REACH }));
 	arrow.addEventListener('pointerleave', grid.release);
-	arrow.addEventListener('click', () => {
-		arrowClicked = performance.now();
-		grid.burst(...arrowEdge());
-	});
+	arrow.addEventListener('click', () => grid.burst(...arrowEdge()));
 
 	// The name and each link draw their picture while hovered or focused
 	for (const element of document.querySelectorAll<HTMLElement>('[data-picture]')) {
@@ -52,10 +48,11 @@ function wireDots() {
 		element.addEventListener('blur', hide);
 	}
 
-	// The sweep demonstrates the dots after load; skipped for reduced motion, or if the arrow was already clicked
-	if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+	// The sweep demonstrates the dots after load; skipped for reduced motion, or once the page has left the top
+	// (scrolled, arrow clicked, or reopened partway down)
+	if (!reducedMotion) {
 		setTimeout(() => {
-			if (arrowClicked === -Infinity) grid.sweep();
+			if (scrollY === 0) grid.sweep();
 		}, SWEEP_DELAY);
 	}
 }
