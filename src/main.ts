@@ -3,7 +3,7 @@ import { dotGrid } from './dot-grid';
 import { scrollEffects } from './scroll-effects';
 import { clamp, required } from './util';
 
-const ARROW_REACH = 170, SWEEP_DELAY = 1000;
+const ARROW_REACH = 170, SWEEP_DELAY = 1000, NOT_FOUND_TIME = 3000;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const arrow = required<HTMLButtonElement>('.next');
@@ -27,12 +27,31 @@ scrollEffects(arrow, {
 	},
 });
 wireDots();
-copyButton(required<HTMLButtonElement>('.terminal button'), required('.terminal .encoded'));
+notFound();
+// Copying ripples the dots from the copy button's side of the grid
+const copy = required<HTMLButtonElement>('.terminal button');
+copyButton(copy, required('.terminal .encoded'), () => {
+	if (!reducedMotion) grid.burst(...gridEdgeNear(copy));
+});
 
 // The arrow's edge nearest the dot grid, where the arrow's effects on the dots start from
 function arrowEdge() {
 	const area = dotArea.getBoundingClientRect(), icon = required('svg', arrow).getBoundingClientRect();
 	return [clamp(area.left + area.width / 2, icon.left, icon.right), clamp(area.top + area.height / 2, icon.top, icon.bottom)] as const;
+}
+
+// The 404 page sends visitors home with ?404: the dots draw a 404 for a moment, and the address is tidied up
+function notFound() {
+	if (!new URLSearchParams(location.search).has('404')) return;
+	history.replaceState(null, '', location.pathname + location.hash);
+	grid.show('notFound');
+	setTimeout(() => grid.show(null), NOT_FOUND_TIME);
+}
+
+// The point of the dot grid nearest an element outside it, so a ripple can come from that element's direction
+function gridEdgeNear(element: Element) {
+	const area = dotArea.getBoundingClientRect(), { left, top, width, height } = element.getBoundingClientRect();
+	return [clamp(left + width / 2, area.left, area.right), clamp(top + height / 2, area.top, area.bottom)] as const;
 }
 
 // What makes the dot grid react: the pointer over it, the arrow, the name and links, and a sweep after load

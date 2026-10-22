@@ -76,13 +76,37 @@ body::after {
 a, button {
 	color: inherit;
 }
+/* Selected text sits on the opposite hue of the page color */
+::selection {
+	background: oklch(from var(--bg) l c calc(h + 180));
+	color: var(--ink);
+}
 
 section {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	min-height: var(--section);
 	padding: 3.5vw;
+	counter-increment: section;
+}
+/* Faint section number in the top-right corner, level with the name tag's band */
+section::before {
+	content: counter(section, decimal-leading-zero);
+	content: counter(section, decimal-leading-zero) / "";
+	position: absolute;
+	top: 0;
+	right: 3.5vw;
+	display: flex;
+	align-items: center;
+	height: var(--row);
+	font: 0.9rem var(--mono);
+	letter-spacing: 0.3em;
+	opacity: 0.5;
+}
+.intro::before {
+	color: var(--bg);
 }
 h1, h2, .links a {
 	font-weight: 800;
@@ -181,6 +205,13 @@ h1, h2, .links a {
 	visibility: visible;
 }
 
+/* The commit this build came from, in the bottom-left corner of the page */
+.build {
+	position: absolute;
+	left: 3.5vw;
+	bottom: 1.5rem;
+	opacity: 0.5;
+}
 .contact h2 {
 	font-size: clamp(2.5rem, 6vw, 5rem);
 	margin-bottom: 1.5rem;
@@ -197,6 +228,20 @@ h1, h2, .links a {
 	/* Base64 has no spaces, so allow breaks anywhere */
 	overflow-wrap: anywhere;
 	font-size: clamp(0.8rem, 1.4vw, 1.1rem);
+}
+/* A block cursor waiting after the command */
+.terminal code::after {
+	content: "";
+	display: inline-block;
+	width: 0.6em;
+	height: 1.15em;
+	margin-left: 0.4em;
+	vertical-align: text-bottom;
+	background: currentColor;
+	animation: blink 1s steps(1) infinite;
+}
+@keyframes blink {
+	50% { opacity: 0; }
 }
 .terminal .faint {
 	opacity: 0.5;
@@ -295,6 +340,9 @@ aside {
 @media (prefers-reduced-motion: reduce) {
 	.next svg {
 		transition: none;
+	}
+	.terminal code::after {
+		animation: none;
 	}
 }
 
