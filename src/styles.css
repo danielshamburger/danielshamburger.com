@@ -215,6 +215,8 @@ aside {
 	position: relative;
 	display: grid;
 	place-items: center;
+	/* Optically centered between the frame and the first row of dots, which sit below the row's edge */
+	padding-top: 6px;
 	font-size: 0.9rem;
 	font-weight: 700;
 }
@@ -226,6 +228,7 @@ aside {
 	inset: 0;
 	display: grid;
 	place-items: center;
+	padding-top: inherit;
 	background: var(--ink);
 	color: var(--bg);
 	clip-path: inset(0 calc(100% - var(--fill, 0%)) 0 0);
