@@ -216,21 +216,56 @@ h1, h2, .links a {
 	font-size: clamp(2.5rem, 6vw, 5rem);
 	margin-bottom: 1.5rem;
 }
+/* Drawn like a macOS window: rounded corners, a faint light rim inside a dark edge, and a soft shadow */
 .terminal {
-	display: flex;
+	overflow: hidden;
+	border-radius: 12px;
 	background: var(--ink);
 	color: var(--bg);
+	box-shadow:
+		inset 0 0 0 1px rgb(255 255 255 / 0.15),
+		0 0 0 1px rgb(0 0 0 / 0.4),
+		0 16px 40px -8px rgb(0 0 0 / 0.35);
+}
+/* Lights on the left, the title centered, the button (⏎, then COPY) on the right, as in a window's toolbar */
+.titlebar {
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	align-items: center;
+	height: 2.75rem;
+	padding: 0 8px 0 14px;
+	border-bottom: 1px solid rgb(0 0 0 / 0.5);
+	background: rgb(255 255 255 / 0.06);
+	font-size: 0.75rem;
+}
+.lights {
+	display: flex;
+	gap: 8px;
+}
+/* Unlit, like an inactive window's */
+.lights span {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	background: currentColor;
+	opacity: 0.25;
+}
+.title {
+	opacity: 0.6;
+	white-space: nowrap;
+}
+@media (max-width: 360px) {
+	.title { visibility: hidden; }
 }
 .terminal code {
-	flex: 1;
-	min-width: 0;
+	display: block;
 	padding: 1.5rem;
 	/* Base64 has no spaces, so allow breaks anywhere */
 	overflow-wrap: anywhere;
 	font-size: clamp(0.8rem, 1.4vw, 1.1rem);
 }
-/* A block cursor waiting after the command */
-.terminal code::after {
+/* A block cursor waiting after the command, then after its output */
+.terminal:not(.ran) .command::after, .terminal.ran .output::after {
 	content: "";
 	display: inline-block;
 	width: 0.6em;
@@ -243,24 +278,50 @@ h1, h2, .links a {
 @keyframes blink {
 	50% { opacity: 0; }
 }
+/* The command's output, on its own line so a triple click selects just the email. The line is there from the
+   start, so the box doesn't grow when the email types out */
+.terminal .output {
+	display: block;
+	min-height: 1lh;
+}
+/* The prompt */
 .terminal .faint {
 	opacity: 0.5;
+}
+/* Breaks anywhere so it starts right after "echo" instead of on a line of its own */
+.terminal .encoded {
+	word-break: break-all;
+}
+.terminal .pipe {
 	white-space: nowrap;
 }
+/* A macOS toolbar button: a translucent rounded fill with a lighter top edge, wide enough for COPIED so it never
+   changes size */
 .terminal button {
-	flex: none;
-	width: 11ch;
+	justify-self: end;
+	width: 10ch;
+	height: 1.75rem;
 	border: 0;
-	border-left: 2px solid var(--bg);
-	background: none;
+	border-radius: 6px;
+	background: rgb(255 255 255 / 0.1);
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 1px 2px rgb(0 0 0 / 0.4);
+	font-size: inherit;
 	letter-spacing: 0.15em;
+	cursor: pointer;
+}
+/* The return key, until the command has run */
+.terminal .key {
+	font-size: 1.3rem;
+	letter-spacing: 0;
+}
+/* Clicking the command runs it too */
+.terminal:not(.ran) code {
 	cursor: pointer;
 }
 .terminal button:is(:hover, :focus-visible) {
 	background: var(--bg);
 	color: var(--ink);
-	/* Outlines the inverted button inside the box, past the divider's gap */
-	box-shadow: inset 0 0 0 2px var(--ink);
+	box-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
 	outline: none;
 }
 
@@ -341,7 +402,7 @@ aside {
 	.next svg {
 		transition: none;
 	}
-	.terminal code::after {
+	.terminal .command::after, .terminal .output::after {
 		animation: none;
 	}
 }

@@ -1,6 +1,6 @@
-import { copyButton } from './copy-button';
 import { dotGrid } from './dot-grid';
 import { scrollEffects } from './scroll-effects';
+import { terminal } from './terminal';
 import { clamp, required } from './util';
 
 const ARROW_REACH = 170, SWEEP_DELAY = 1000, NOT_FOUND_TIME = 3000;
@@ -28,10 +28,12 @@ scrollEffects(arrow, {
 });
 wireDots();
 notFound();
-// Copying ripples the dots from the copy button's side of the grid
-const copy = required<HTMLButtonElement>('.terminal button');
-copyButton(copy, required('.terminal .encoded'), () => {
-	if (!reducedMotion) grid.burst(...gridEdgeNear(copy));
+// Every press of the terminal's button (decode, then copy) ripples the dots from its side of the grid
+const box = required('.terminal');
+terminal(box, { instant: reducedMotion });
+const action = required('button', box);
+action.addEventListener('click', () => {
+	if (!reducedMotion) grid.burst(...gridEdgeNear(action));
 });
 
 // The arrow's edge nearest the dot grid, where the arrow's effects on the dots start from
