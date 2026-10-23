@@ -10,10 +10,14 @@ export function terminal(box: HTMLElement) {
 	const encoded = required('.encoded', box);
 	const output = required('.output', box);
 	const code = required('code', box);
+	const title = required('.title', box);
 
 	button.addEventListener('click', () => {
 		const email = atob(encoded.textContent ?? '');
 		box.classList.add('ran');
+		// Like a real terminal, the title names the program while it runs
+		const folder = title.textContent;
+		title.textContent = 'base64';
 		// Announced once, when the whole line is there
 		output.ariaBusy = 'true';
 		let typed = 0;
@@ -22,6 +26,7 @@ export function terminal(box: HTMLElement) {
 			output.textContent = email.slice(0, typed);
 			if (typed < email.length) return setTimeout(type, TYPE_DELAY);
 			output.ariaBusy = 'false';
+			title.textContent = folder;
 			button.removeAttribute('aria-label');
 			button.textContent = 'COPY';
 			copyButton(button, output);

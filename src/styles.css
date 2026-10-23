@@ -216,7 +216,8 @@ h1, h2, .links a {
 	font-size: clamp(2.5rem, 6vw, 5rem);
 	margin-bottom: 1.5rem;
 }
-/* Drawn like a macOS window: rounded corners, a faint light rim inside a dark edge, and a soft shadow */
+/* Drawn like a macOS window: rounded corners, a faint light rim inside a dark edge, and a soft shadow in a deep
+   shade of the page color (plain black where relative colors aren't supported) */
 .terminal {
 	overflow: hidden;
 	border-radius: 12px;
@@ -226,6 +227,10 @@ h1, h2, .links a {
 		inset 0 0 0 1px rgb(255 255 255 / 0.15),
 		0 0 0 1px rgb(0 0 0 / 0.4),
 		0 16px 40px -8px rgb(0 0 0 / 0.35);
+	box-shadow:
+		inset 0 0 0 1px rgb(255 255 255 / 0.15),
+		0 0 0 1px rgb(0 0 0 / 0.4),
+		0 16px 40px -8px oklch(from var(--bg) calc(l * 0.45) c h / 0.6);
 }
 /* Lights on the left, the title centered, the button (⏎, then COPY) on the right, as in a window's toolbar */
 .titlebar {
@@ -295,11 +300,11 @@ h1, h2, .links a {
 .terminal .pipe {
 	white-space: nowrap;
 }
-/* A macOS toolbar button: a translucent rounded fill with a lighter top edge, wide enough for COPIED so it never
-   changes size */
+/* A macOS toolbar button: a translucent rounded fill with a lighter top edge, sized in rem so it never changes size,
+   whatever it shows */
 .terminal button {
 	justify-self: end;
-	width: 10ch;
+	width: 4.5rem;
 	height: 1.75rem;
 	border: 0;
 	border-radius: 6px;
@@ -309,8 +314,8 @@ h1, h2, .links a {
 	letter-spacing: 0.15em;
 	cursor: pointer;
 }
-/* The return key, until the command has run */
-.terminal .key {
+/* Symbols (⏎ to run, ✓ once copied) carry their words in aria-label, and show larger than the lettering */
+.terminal button[aria-label] {
 	font-size: 1.3rem;
 	letter-spacing: 0;
 }

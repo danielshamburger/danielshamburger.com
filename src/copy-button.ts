@@ -5,12 +5,17 @@ export function copyButton(button: HTMLButtonElement, code: HTMLElement) {
 	button.addEventListener('click', async () => {
 		try {
 			await navigator.clipboard.writeText(code.textContent ?? '');
-			button.textContent = 'COPIED';
+			button.textContent = '✓';
+			button.ariaLabel = 'Copied';
 		} catch {
 			getSelection()?.selectAllChildren(code);
 			button.textContent = 'FAILED';
+			button.removeAttribute('aria-label');
 		}
 		clearTimeout(reset);
-		reset = setTimeout(() => button.textContent = 'COPY', 1500);
+		reset = setTimeout(() => {
+			button.textContent = 'COPY';
+			button.removeAttribute('aria-label');
+		}, 2500);
 	});
 }
