@@ -86,8 +86,8 @@ const ease = (value: number, goal: number, rate = EASE) => {
 export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions = {}): DotGrid {
 	const canvas = required<HTMLCanvasElement>('canvas', area);
 	const ctx = context2d(canvas);
-	const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink');
-	const bleed = Number.parseFloat(getComputedStyle(area).getPropertyValue('--bleed'));
+	// Read from the CSS on every resize, so they're right even if the script ran before the styles applied
+	let ink: string, bleed: number;
 
 	// Geometry is rebuilt on resize and never modified; state changes only through the controls and step()
 	let geometry: Geometry;
@@ -124,6 +124,8 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 	}
 
 	function resize() {
+		ink = getComputedStyle(document.documentElement).getPropertyValue('--ink');
+		bleed = Number.parseFloat(getComputedStyle(area).getPropertyValue('--bleed')) || 0;
 		const { width, height } = area.getBoundingClientRect();
 		canvas.width = (width + 2 * bleed) * devicePixelRatio;
 		canvas.height = (height + 2 * bleed) * devicePixelRatio;
@@ -255,6 +257,12 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 
 	resize();
 	new ResizeObserver(resize).observe(area);
+	// iOS Safari can drop a canvas's pixels while the page is hidden or held for back/forward and on first show,
+	// and the dots only repaint when something changes, so paint again whenever the page is shown
+	addEventListener('pageshow', animate);
+	document.addEventListener('visibilitychange', () => {
+		if (!document.hidden) animate();
+	});
 
 	return {
 		attract(x, y, { reach = REACH, cursor = false } = {}) {
