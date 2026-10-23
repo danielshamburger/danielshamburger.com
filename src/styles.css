@@ -216,10 +216,17 @@ h1, h2, .links a {
 	font-size: clamp(2.5rem, 6vw, 5rem);
 	margin-bottom: 1.5rem;
 }
+/* Drawn like a macOS window: rounded corners, a faint light rim inside a dark edge, and a soft shadow */
 .terminal {
 	display: flex;
+	overflow: hidden;
+	border-radius: 12px;
 	background: var(--ink);
 	color: var(--bg);
+	box-shadow:
+		inset 0 0 0 1px rgb(255 255 255 / 0.15),
+		0 0 0 1px rgb(0 0 0 / 0.4),
+		0 16px 40px -8px rgb(0 0 0 / 0.35);
 }
 .terminal code {
 	flex: 1;
@@ -229,8 +236,8 @@ h1, h2, .links a {
 	overflow-wrap: anywhere;
 	font-size: clamp(0.8rem, 1.4vw, 1.1rem);
 }
-/* A block cursor waiting after the command */
-.terminal code::after {
+/* A block cursor waiting after the command, then after its output */
+.terminal:not(.ran) .command::after, .terminal.ran .output::after {
 	content: "";
 	display: inline-block;
 	width: 0.6em;
@@ -243,24 +250,43 @@ h1, h2, .links a {
 @keyframes blink {
 	50% { opacity: 0; }
 }
+/* The command's output, on its own line so a triple click selects just the email. The line is there from the
+   start, so the box doesn't grow when the email types out */
+.terminal .output {
+	display: block;
+	min-height: 1lh;
+}
+/* The prompt */
 .terminal .faint {
 	opacity: 0.5;
+}
+/* Breaks anywhere so it starts right after "echo" instead of on a line of its own */
+.terminal .encoded {
+	word-break: break-all;
+}
+.terminal .pipe {
 	white-space: nowrap;
 }
+/* A macOS-style button set inside the window: a translucent rounded fill with a lighter top edge */
 .terminal button {
 	flex: none;
 	width: 11ch;
+	margin: 12px 12px 12px 0;
 	border: 0;
-	border-left: 2px solid var(--bg);
-	background: none;
+	border-radius: 8px;
+	background: rgb(255 255 255 / 0.1);
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 1px 2px rgb(0 0 0 / 0.4);
 	letter-spacing: 0.15em;
 	cursor: pointer;
+}
+/* The return key, until the command has run; sized on its own so the button keeps COPY's width */
+.terminal .key {
+	font-size: 1.6rem;
 }
 .terminal button:is(:hover, :focus-visible) {
 	background: var(--bg);
 	color: var(--ink);
-	/* Outlines the inverted button inside the box, past the divider's gap */
-	box-shadow: inset 0 0 0 2px var(--ink);
+	box-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
 	outline: none;
 }
 
@@ -341,7 +367,7 @@ aside {
 	.next svg {
 		transition: none;
 	}
-	.terminal code::after {
+	.terminal .command::after, .terminal .output::after {
 		animation: none;
 	}
 }
@@ -367,4 +393,11 @@ aside {
 		border-top: var(--line);
 	}
 	.next svg { width: 2.5rem; }
+	/* The button goes under the command, leaving the text the box's full width */
+	.terminal { flex-direction: column; }
+	.terminal button {
+		width: auto;
+		height: 3rem;
+		margin: 0 12px 12px;
+	}
 }
