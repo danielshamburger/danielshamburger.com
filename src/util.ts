@@ -1,3 +1,5 @@
+export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 export const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 // querySelector for elements the page can't work without: fails loudly instead of returning null

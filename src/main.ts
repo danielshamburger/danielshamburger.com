@@ -4,7 +4,6 @@ import { terminal } from './terminal';
 import { clamp, required } from './util';
 
 const ARROW_REACH = 170, SWEEP_DELAY = 1000, NOT_FOUND_TIME = 3000;
-const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const arrow = required<HTMLButtonElement>('.next');
 const dotArea = required('.dots');
@@ -22,24 +21,25 @@ const grid = dotGrid(dotArea, {
 
 // Scrolling into the last section ripples the dots from the arrow, as it flips to "back to top"
 scrollEffects(arrow, {
-	onEnd: () => {
-		if (!reducedMotion) grid.burst(...arrowEdge());
-	},
+	onEnd: () => grid.burst(...arrowEdge()),
 });
 wireDots();
 notFound();
 // Every press of the terminal's button (decode, then copy) ripples the dots from its side of the grid
 const box = required('.terminal');
-terminal(box, { instant: reducedMotion });
+terminal(box);
 const action = required('button', box);
-action.addEventListener('click', () => {
-	if (!reducedMotion) grid.burst(...gridEdgeNear(action));
-});
+action.addEventListener('click', () => grid.burst(...nearestPoint(action, dotArea)));
 
-// The arrow's edge nearest the dot grid, where the arrow's effects on the dots start from
+// The point inside one element nearest another element's center: where effects on the dots start from, so they
+// come from that element's direction
+function nearestPoint(from: Element, to: Element) {
+	const { left, top, width, height } = from.getBoundingClientRect(), area = to.getBoundingClientRect();
+	return [clamp(left + width / 2, area.left, area.right), clamp(top + height / 2, area.top, area.bottom)] as const;
+}
+// The arrow's edge nearest the dot grid
 function arrowEdge() {
-	const area = dotArea.getBoundingClientRect(), icon = required('svg', arrow).getBoundingClientRect();
-	return [clamp(area.left + area.width / 2, icon.left, icon.right), clamp(area.top + area.height / 2, icon.top, icon.bottom)] as const;
+	return nearestPoint(dotArea, required('svg', arrow));
 }
 
 // The 404 page sends visitors home with ?404: the dots draw a 404 for a moment, and the address is tidied up
@@ -48,12 +48,6 @@ function notFound() {
 	history.replaceState(null, '', location.pathname + location.hash);
 	grid.show('notFound');
 	setTimeout(() => grid.show(null), NOT_FOUND_TIME);
-}
-
-// The point of the dot grid nearest an element outside it, so a ripple can come from that element's direction
-function gridEdgeNear(element: Element) {
-	const area = dotArea.getBoundingClientRect(), { left, top, width, height } = element.getBoundingClientRect();
-	return [clamp(left + width / 2, area.left, area.right), clamp(top + height / 2, area.top, area.bottom)] as const;
 }
 
 // What makes the dot grid react: the pointer over it, the arrow, the name and links, and a sweep after load
@@ -83,11 +77,9 @@ function wireDots() {
 		element.addEventListener('blur', hide);
 	}
 
-	// The sweep demonstrates the dots after load; skipped for reduced motion, or once the page has left the top
-	// (scrolled, arrow clicked, or reopened partway down)
-	if (!reducedMotion) {
-		setTimeout(() => {
-			if (scrollY === 0) grid.sweep();
-		}, SWEEP_DELAY);
-	}
+	// The sweep demonstrates the dots after load; skipped once the page has left the top (scrolled, arrow clicked,
+	// or reopened partway down)
+	setTimeout(() => {
+		if (scrollY === 0) grid.sweep();
+	}, SWEEP_DELAY);
 }

@@ -1,5 +1,5 @@
 import { PICTURES } from './pictures';
-import { required } from './util';
+import { reducedMotion, required } from './util';
 
 const SPACING = 14, MARGIN = 12, RADIUS = 1.5, REACH = 100, PUSH = 18, GROW = 1.4, EASE = 0.2;
 const BURST_DURATION = 600, BURST_REACH = 320, BURST_WIDTH = 30, BURST_PUSH = 18, BURST_GROW = 1.5;
@@ -53,7 +53,8 @@ export interface AttractOptions {
 	cursor?: boolean;
 }
 
-// The controls. Points are viewport coordinates, like pointer events give.
+// The controls. Points are viewport coordinates, like pointer events give. The big motions (bursts, the sweep and
+// the gravity well) do nothing for visitors who prefer reduced motion.
 export interface DotGrid {
 	attract(x: number, y: number, options?: AttractOptions): void;
 	release(): void;
@@ -85,8 +86,8 @@ const ease = (value: number, goal: number, rate = EASE) => {
 export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions = {}): DotGrid {
 	const canvas = required<HTMLCanvasElement>('canvas', area);
 	const ctx = context2d(canvas);
-	const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink');
-	const bleed = Number.parseFloat(getComputedStyle(area).getPropertyValue('--bleed'));
+	// Read from the CSS on every resize, so they're right even if the script ran before the styles applied
+	let ink: string, bleed: number;
 
 	// Geometry is rebuilt on resize and never modified; state changes only through the controls and step()
 	let geometry: Geometry;
@@ -123,6 +124,8 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 	}
 
 	function resize() {
+		ink = getComputedStyle(document.documentElement).getPropertyValue('--ink');
+		bleed = Number.parseFloat(getComputedStyle(area).getPropertyValue('--bleed')) || 0;
 		const { width, height } = area.getBoundingClientRect();
 		canvas.width = (width + 2 * bleed) * devicePixelRatio;
 		canvas.height = (height + 2 * bleed) * devicePixelRatio;
@@ -254,6 +257,12 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 
 	resize();
 	new ResizeObserver(resize).observe(area);
+	// iOS Safari can drop a canvas's pixels while the page is hidden or held for back/forward and on first show,
+	// and the dots only repaint when something changes, so paint again whenever the page is shown
+	addEventListener('pageshow', animate);
+	document.addEventListener('visibilitychange', () => {
+		if (!document.hidden) animate();
+	});
 
 	return {
 		attract(x, y, { reach = REACH, cursor = false } = {}) {
@@ -267,6 +276,7 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 			animate();
 		},
 		burst(x, y) {
+			if (reducedMotion()) return;
 			state.bursts.push({ ...local(x, y), start: performance.now() });
 			animate();
 		},
@@ -276,11 +286,12 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 			animate();
 		},
 		sweep() {
-			if (state.target || state.picture) return;
+			if (reducedMotion() || state.target || state.picture) return;
 			state.sweep = { start: performance.now() };
 			animate();
 		},
 		hold(x, y) {
+			if (reducedMotion()) return;
 			state.sweep = null;
 			state.field = { ...state.field, ...local(x, y) };
 			state.pullTarget = 1;

@@ -1,6 +1,6 @@
 # danielshamburger[dot]com
 
-Repo for my personal website: a single page built with [Vite](https://vite.dev) and TypeScript, hosted on GitHub Pages.
+Repo for my personal website: a single page built with TypeScript and Vite, hosted on GitHub Pages.
 
 ## Development
 
