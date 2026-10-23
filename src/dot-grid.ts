@@ -1,5 +1,5 @@
 import { PICTURES } from './pictures';
-import { required } from './util';
+import { reducedMotion, required } from './util';
 
 const SPACING = 14, MARGIN = 12, RADIUS = 1.5, REACH = 100, PUSH = 18, GROW = 1.4, EASE = 0.2;
 const BURST_DURATION = 600, BURST_REACH = 320, BURST_WIDTH = 30, BURST_PUSH = 18, BURST_GROW = 1.5;
@@ -53,7 +53,8 @@ export interface AttractOptions {
 	cursor?: boolean;
 }
 
-// The controls. Points are viewport coordinates, like pointer events give.
+// The controls. Points are viewport coordinates, like pointer events give. The big motions (bursts, the sweep and
+// the gravity well) do nothing for visitors who prefer reduced motion.
 export interface DotGrid {
 	attract(x: number, y: number, options?: AttractOptions): void;
 	release(): void;
@@ -267,6 +268,7 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 			animate();
 		},
 		burst(x, y) {
+			if (reducedMotion()) return;
 			state.bursts.push({ ...local(x, y), start: performance.now() });
 			animate();
 		},
@@ -276,11 +278,12 @@ export function dotGrid(area: HTMLElement, { inked = () => [] }: DotGridOptions 
 			animate();
 		},
 		sweep() {
-			if (state.target || state.picture) return;
+			if (reducedMotion() || state.target || state.picture) return;
 			state.sweep = { start: performance.now() };
 			animate();
 		},
 		hold(x, y) {
+			if (reducedMotion()) return;
 			state.sweep = null;
 			state.field = { ...state.field, ...local(x, y) };
 			state.pullTarget = 1;

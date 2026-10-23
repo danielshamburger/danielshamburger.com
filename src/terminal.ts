@@ -1,11 +1,11 @@
 import { copyButton } from './copy-button';
-import { required } from './util';
+import { reducedMotion, required } from './util';
 
 const TYPE_DELAY = 40;
 
 // The title bar's ⏎ button runs the command (so does clicking the command): the decoded email types out on the next
 // line, then the button copies it
-export function terminal(box: HTMLElement, { instant = false }: { instant?: boolean } = {}) {
+export function terminal(box: HTMLElement) {
 	const button = required<HTMLButtonElement>('button', box);
 	const encoded = required('.encoded', box);
 	const output = required('.output', box);
@@ -18,7 +18,7 @@ export function terminal(box: HTMLElement, { instant = false }: { instant?: bool
 		output.ariaBusy = 'true';
 		let typed = 0;
 		const type = () => {
-			typed = instant ? email.length : typed + 1;
+			typed = reducedMotion() ? email.length : typed + 1;
 			output.textContent = email.slice(0, typed);
 			if (typed < email.length) return setTimeout(type, TYPE_DELAY);
 			output.ariaBusy = 'false';
